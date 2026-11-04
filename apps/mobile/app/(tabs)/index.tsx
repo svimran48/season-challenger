@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { api, type FixtureSummary } from '../../src/api';
@@ -8,7 +8,7 @@ import { countdown, formatKickoff } from '../../src/format';
 import { font, useTheme } from '../../src/theme';
 import { kitLight } from '../../src/shaders/looks';
 import { ShaderSurface } from '../../src/shaders/ShaderSurface';
-import { Chip, ClubCrest, Loading, Message, Screen } from '../../src/ui';
+import { Chip, ClubCrest, Loading, Message, PressScale, Rise, Screen } from '../../src/ui';
 
 export default function MatchesScreen() {
   const t = useTheme();
@@ -99,6 +99,7 @@ function FixtureCard({
   entered: boolean;
 }) {
   const t = useTheme();
+  const router = useRouter();
   const scheduled = fixture.status === 'scheduled';
   const card = useQuery({
     queryKey: ['mastery', 'card', fixture.id],
@@ -106,11 +107,12 @@ function FixtureCard({
     enabled: scheduled,
   });
   return (
-    <Link href={{ pathname: '/fixture/[id]', params: { id: fixture.id } }} asChild>
-      <Pressable
+    <Rise index={index}>
+      <PressScale
+        onPress={() => router.push({ pathname: '/fixture/[id]', params: { id: fixture.id } })}
         accessibilityRole="link"
         accessibilityLabel={`${fixture.home.name} against ${fixture.away.name}`}
-        style={StyleSheet.flatten([styles.match, { borderColor: t.border }])}
+        style={[styles.match, { borderColor: t.border }]}
       >
         {/* A still frame: a whole list of moving shaders would cost too much battery. */}
         <ShaderSurface
@@ -167,8 +169,8 @@ function FixtureCard({
             )}
           </View>
         </View>
-      </Pressable>
-    </Link>
+      </PressScale>
+    </Rise>
   );
 }
 

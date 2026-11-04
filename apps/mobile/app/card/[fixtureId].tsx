@@ -1,11 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api, ApiError, type MasteryAnswer, type MasteryCall } from '../../src/api';
 import { formatKickoff } from '../../src/format';
+import { kitLight } from '../../src/shaders/looks';
+import { ShaderSurface } from '../../src/shaders/ShaderSurface';
 import { font, useTheme } from '../../src/theme';
-import { Button, Card, Chip, Loading, Message, Screen } from '../../src/ui';
+import { Button, Card, Chip, Gauge, Loading, Message, Rise, Screen } from '../../src/ui';
+
+const SELECTED_TINT = 'rgba(220, 183, 108, 0.12)';
 
 const CONFIDENCE = [
   { label: 'Unsure', value: 0.4 },
@@ -47,6 +52,10 @@ export default function AnalysisCardScreen() {
     queryFn: () => api.masteryCard(fixtureId),
     retry: false,
   });
+  const match = useQuery({
+    queryKey: ['fixture', fixtureId],
+    queryFn: () => api.fixture(fixtureId),
+  });
   const [answers, setAnswers] = useState<Record<string, MasteryAnswer>>({});
 
   useEffect(() => {
@@ -73,33 +82,58 @@ export default function AnalysisCardScreen() {
 
   const { status, calls, fixture, rewardCoins, submittedAt, score } = card.data;
   const open = status === 'open';
-  const complete = calls.every((c) => answers[c.id]);
+  const answered = calls.filter((c) => answers[c.id]).length;
+  const complete = answered === calls.length;
   const set = (id: string, answer: MasteryAnswer) => setAnswers((a) => ({ ...a, [id]: answer }));
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.content}>
-        <Card>
-          <Text style={[styles.title, { color: t.text }]}>
-            {fixture.home.shortName} v {fixture.away.shortName}
-          </Text>
-          <Text style={{ color: t.muted }}>
-            {open
-              ? `Change your answers until kick-off, ${formatKickoff(fixture.kickoffAt)}. First submission pays ${rewardCoins} bonus coins.`
-              : status === 'locked'
-                ? 'Locked at kick-off. Results appear after full time.'
-                : `Graded. Your score: ${score === null ? 'no card submitted' : Math.round(score)}.`}
-          </Text>
-        </Card>
+        <View style={[styles.hero, { borderColor: t.border }]}>
+          {match.data ? (
+            <ShaderSurface
+              look="clash"
+              animated={open}
+              colours={{
+                home: kitLight(match.data.home.colour),
+                away: kitLight(match.data.away.colour),
+              }}
+            />
+          ) : null}
+          <View style={styles.heroVeil} />
+          <View style={styles.heroBody}>
+            <Text style={[styles.title, { color: t.text }]}>
+              {fixture.home.shortName} v {fixture.away.shortName}
+            </Text>
+            <Text style={{ color: t.text, lineHeight: 20 }}>
+              {open
+                ? `Change your answers until kick-off, ${formatKickoff(fixture.kickoffAt)}. First submission pays ${rewardCoins} bonus coins.`
+                : status === 'locked'
+                  ? 'Locked at kick-off. Results appear after full time.'
+                  : `Graded. Your score: ${score === null ? 'no card submitted' : Math.round(score)}.`}
+            </Text>
+            {open ? (
+              <View style={styles.progress}>
+                <Gauge share={calls.length ? answered / calls.length : 0} />
+                <Text style={[styles.progressText, { color: t.text }]}>
+                  {answered} of {calls.length} called
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
 
-        {calls.map((call) => (
-          <CallCard
-            key={call.id}
-            call={call}
-            open={open}
-            answer={answers[call.id]}
-            onAnswer={(a) => set(call.id, a)}
-          />
+        {calls.map((call, index) => (
+          <Rise key={call.id} index={index}>
+            <CallCard
+              call={call}
+              number={index + 1}
+              total={calls.length}
+              open={open}
+              answer={answers[call.id]}
+              onAnswer={(a) => set(call.id, a)}
+            />
+          </Rise>
         ))}
 
         {open ? (
@@ -130,11 +164,15 @@ export default function AnalysisCardScreen() {
 
 function CallCard({
   call,
+  number,
+  total,
   open,
   answer,
   onAnswer,
 }: {
   call: MasteryCall;
+  number: number;
+  total: number;
   open: boolean;
   answer: MasteryAnswer | undefined;
   onAnswer: (answer: MasteryAnswer) => void;
@@ -143,6 +181,9 @@ function CallCard({
   const picked = pickedValue(answer);
   return (
     <Card>
+      <Text style={[styles.callNumber, { color: t.accent }]}>
+        CALL {number} OF {total}
+      </Text>
       <Text style={[styles.prompt, { color: t.text }]}>{call.prompt}</Text>
       {call.range ? (
         <RangePicker range={call.range} open={open} answer={answer} onAnswer={onAnswer} />
@@ -161,13 +202,21 @@ function CallCard({
                 styles.option,
                 {
                   borderColor: selected ? t.accent : t.border,
-                  backgroundColor: selected ? t.surface : 'transparent',
-                  borderWidth: selected ? 2 : 1,
+                  backgroundColor: selected ? SELECTED_TINT : 'transparent',
                 },
               ]}
             >
-              <Text style={{ color: t.text, fontWeight: selected ? '600' : '400' }}>{o.label}</Text>
-              {o.detail ? <Text style={{ color: t.muted }}>{o.detail}</Text> : null}
+              <Ionicons
+                name={selected ? 'radio-button-on' : 'radio-button-off'}
+                size={20}
+                color={selected ? t.accent : t.muted}
+              />
+              <View style={styles.optionText}>
+                <Text style={{ color: t.text, fontFamily: selected ? font.title : undefined }}>
+                  {o.label}
+                </Text>
+                {o.detail ? <Text style={{ color: t.muted }}>{o.detail}</Text> : null}
+              </View>
               {right ? <Chip label="Right" tone="done" /> : null}
             </Pressable>
           );
@@ -186,10 +235,15 @@ function CallCard({
                 onPress={() => onAnswer({ ...answer, confidence: c.value })}
                 style={[
                   styles.chipButton,
-                  { borderColor: selected ? t.accent : t.border, borderWidth: selected ? 2 : 1 },
+                  {
+                    borderColor: selected ? t.accent : t.border,
+                    backgroundColor: selected ? t.accent : 'transparent',
+                  },
                 ]}
               >
-                <Text style={{ color: t.text }}>{c.label}</Text>
+                <Text style={[styles.chipLabel, { color: selected ? t.accentText : t.text }]}>
+                  {c.label}
+                </Text>
               </Pressable>
             );
           })}
@@ -202,6 +256,33 @@ function CallCard({
         </Text>
       ) : null}
     </Card>
+  );
+}
+
+function StepButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+}: {
+  icon: 'add' | 'remove';
+  label: string;
+  onPress: () => void;
+  disabled: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      hitSlop={4}
+      onPress={onPress}
+      style={[styles.step, { borderColor: disabled ? t.border : t.accent }]}
+    >
+      <Ionicons name={icon} size={18} color={disabled ? t.muted : t.accent} />
+    </Pressable>
   );
 }
 
@@ -228,9 +309,9 @@ function RangePicker({
     <View style={styles.stepper}>
       <Text style={{ color: t.muted }}>{label}</Text>
       <View style={styles.stepRow}>
-        <Button label="−" kind="secondary" onPress={down} disabled={!open} />
+        <StepButton icon="remove" label={`Lower ${label}`} onPress={down} disabled={!open} />
         <Text style={[styles.stepValue, { color: t.text }]}>{value}</Text>
-        <Button label="+" kind="secondary" onPress={up} disabled={!open} />
+        <StepButton icon="add" label={`Raise ${label}`} onPress={up} disabled={!open} />
       </View>
     </View>
   );
@@ -266,11 +347,51 @@ function RangePicker({
 
 const styles = StyleSheet.create({
   content: { paddingTop: 16, paddingBottom: 32 },
-  title: { fontSize: 20, fontFamily: font.display, marginBottom: 4 },
+  hero: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#0c0d12',
+  },
+  heroVeil: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(5, 5, 8, 0.42)' },
+  heroBody: { padding: 18 },
+  progress: { marginTop: 14 },
+  progressText: { fontSize: 12, marginTop: 6, fontFamily: font.title },
+  callNumber: { fontSize: 11, fontFamily: font.title, letterSpacing: 1.6, marginBottom: 6 },
+  optionText: { flex: 1 },
+  chipLabel: { fontSize: 13, fontFamily: font.title },
+  step: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: 24, fontFamily: font.heavy, marginBottom: 6 },
   prompt: { fontSize: 15, fontFamily: font.title, lineHeight: 21, marginBottom: 10 },
-  option: { padding: 12, borderRadius: 10, marginBottom: 8, minHeight: 44 },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 12,
+    marginBottom: 8,
+    minHeight: 46,
+  },
   confidence: { flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap' },
-  chipButton: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, minHeight: 44 },
+  chipButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    minHeight: 44,
+  },
   result: { marginTop: 8, lineHeight: 20 },
   submit: { paddingHorizontal: 16, marginTop: 8 },
   error: { marginBottom: 8 },
@@ -278,5 +399,5 @@ const styles = StyleSheet.create({
   range: { flexDirection: 'row', gap: 16, marginBottom: 4 },
   stepper: { flex: 1 },
   stepRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
-  stepValue: { fontSize: 20, fontWeight: '600', minWidth: 28, textAlign: 'center' },
+  stepValue: { fontSize: 22, fontFamily: font.display, minWidth: 30, textAlign: 'center' },
 });

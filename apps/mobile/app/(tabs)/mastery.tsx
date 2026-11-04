@@ -1,11 +1,12 @@
-import { TIERS, TIER_THRESHOLDS } from '@season/shared';
+import { TIERS, TIER_THRESHOLDS, type Tier } from '@season/shared';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '../../src/api';
 import { font, useTheme } from '../../src/theme';
 import type { LookName } from '../../src/shaders/looks';
-import { Card, Chip, Loading, MetalCard, Message, Screen } from '../../src/ui';
+import { ShaderSurface } from '../../src/shaders/ShaderSurface';
+import { Card, Chip, Gauge, Loading, MetalCard, Message, Screen } from '../../src/ui';
 
 export default function MasteryScreen() {
   const t = useTheme();
@@ -27,15 +28,8 @@ export default function MasteryScreen() {
           <Text style={[styles.rating, { color: t.text }]}>{Math.round(rating)}</Text>
           {next ? (
             <>
-              <View style={[styles.track, { backgroundColor: t.border }]}>
-                <View
-                  style={[
-                    styles.fill,
-                    { backgroundColor: t.accent, width: `${Math.round(next.share * 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={{ color: t.text }}>
+              <Gauge share={next.share} />
+              <Text style={[styles.note, { color: t.text }]}>
                 {next.next} needs rating {next.rating.need} and {next.cards.need} cards. You have{' '}
                 {cardsCompleted}.
               </Text>
@@ -88,10 +82,31 @@ export default function MasteryScreen() {
           ) : (
             board.data.entries.map((e) => (
               <View key={e.rank + e.displayName} style={[styles.row, { borderColor: t.border }]}>
-                <Text style={{ color: t.text, fontWeight: e.isYou ? '700' : '400' }}>
-                  {e.rank}. {e.displayName}
-                  {e.isYou ? ' (you)' : ''}
-                </Text>
+                <View style={styles.who}>
+                  <View
+                    style={[
+                      styles.medal,
+                      { borderColor: MEDALS[e.rank - 1] ?? t.border },
+                      MEDALS[e.rank - 1] ? { backgroundColor: MEDALS[e.rank - 1] } : null,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.medalText,
+                        { color: MEDALS[e.rank - 1] ? t.accentText : t.muted },
+                      ]}
+                    >
+                      {e.rank}
+                    </Text>
+                  </View>
+                  <Text
+                    style={{ color: e.isYou ? t.accent : t.text, flexShrink: 1 }}
+                    numberOfLines={1}
+                  >
+                    {e.displayName}
+                    {e.isYou ? ' (you)' : ''}
+                  </Text>
+                </View>
                 <Text style={{ color: t.muted }}>
                   {e.tier} · {Math.round(e.rating)}
                 </Text>
@@ -111,16 +126,30 @@ export default function MasteryScreen() {
 
         <Card>
           <Text style={[styles.heading, { color: t.text }]}>Tiers</Text>
-          {TIERS.map((name) => {
+          {TIERS.map((name, index) => {
             const need = TIER_THRESHOLDS[name];
+            const here = name === tier;
+            const reached = index <= TIERS.indexOf(tier as Tier);
             return (
-              <View key={name} style={[styles.row, { borderColor: t.border }]}>
-                <Text style={[styles.tierName, { color: t.text }]}>{name}</Text>
-                <Text style={{ color: t.muted }}>
-                  {need.cards === 0
-                    ? 'Where everyone starts'
-                    : `Rating ${need.rating}+, ${need.cards} cards`}
-                </Text>
+              <View
+                key={name}
+                style={[
+                  styles.rung,
+                  { borderColor: here ? t.accent : 'transparent', opacity: reached ? 1 : 0.55 },
+                ]}
+              >
+                <View style={styles.swatch}>
+                  <ShaderSurface look={name as LookName} animated={false} seed={9 + index * 5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.tierName, { color: t.text }]}>{name}</Text>
+                  <Text style={{ color: t.muted, fontSize: 13 }}>
+                    {need.cards === 0
+                      ? 'Where everyone starts'
+                      : `Rating ${need.rating}+, ${need.cards} cards`}
+                  </Text>
+                </View>
+                {here ? <Chip label="You" tone="done" /> : null}
               </View>
             );
           })}
@@ -130,13 +159,39 @@ export default function MasteryScreen() {
   );
 }
 
+const MEDALS = ['#dcb76c', '#c3c9d1', '#b57f52'];
+
 const styles = StyleSheet.create({
+  who: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 1 },
+  medal: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  medalText: { fontSize: 12, fontFamily: font.display },
+  rung: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 8,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderRadius: 14,
+  },
+  swatch: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    overflow: 'hidden',
+    backgroundColor: '#14100a',
+  },
   content: { paddingTop: 16 },
   spread: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  label: { fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 },
+  label: { fontSize: 12, fontFamily: font.title, textTransform: 'uppercase', letterSpacing: 1.6 },
   rating: { fontSize: 48, fontFamily: font.heavy, marginVertical: 4 },
-  track: { height: 6, borderRadius: 3, overflow: 'hidden', marginBottom: 8 },
-  fill: { height: 6 },
   note: { marginTop: 8 },
   heading: { fontSize: 17, fontFamily: font.title, marginBottom: 8 },
   body: { fontSize: 15, lineHeight: 22 },
@@ -147,6 +202,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  score: { fontWeight: '600', fontVariant: ['tabular-nums'] },
-  tierName: { fontWeight: '600' },
+  score: { fontFamily: font.display, fontVariant: ['tabular-nums'] },
+  tierName: { fontSize: 15, fontFamily: font.title },
 });

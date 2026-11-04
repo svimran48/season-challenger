@@ -1,9 +1,63 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import { ShaderSurface } from './shaders/ShaderSurface';
 import type { LookName } from './shaders/looks';
 import { font, useTheme } from './theme';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const PRESS_SPRING = { damping: 18, stiffness: 340 };
+
+/** A pressable that gives under the finger. Reduced-motion settings are honoured by Reanimated. */
+export function PressScale({
+  style,
+  children,
+  ...rest
+}: Omit<ComponentProps<typeof Pressable>, 'style' | 'children'> & {
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  const scale = useSharedValue(1);
+  const pressed = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <AnimatedPressable
+      {...rest}
+      onPressIn={() => {
+        scale.value = withSpring(0.97, PRESS_SPRING);
+      }}
+      onPressOut={() => {
+        scale.value = withSpring(1, PRESS_SPRING);
+      }}
+      style={[style, pressed]}
+    >
+      {children}
+    </AnimatedPressable>
+  );
+}
+
+/** Eases a list item into place, one after another for the first few on screen. */
+export function Rise({ index = 0, children }: { index?: number; children: ReactNode }) {
+  return (
+    <Animated.View entering={FadeInDown.duration(380).delay(index < 6 ? index * 55 : 0)}>
+      {children}
+    </Animated.View>
+  );
+}
 
 export function Screen({ children }: { children: ReactNode }) {
   return <View style={styles.screen}>{children}</View>;
@@ -103,6 +157,9 @@ export function Message({ title, body }: { title: string; body?: string }) {
   );
 }
 
+const GOLD = ['#f4dc9f', '#dcb76c', '#b98f45'] as const;
+const GOLD_EDGE = 'rgba(255, 240, 200, 0.55)';
+
 export function Button({
   label,
   onPress,
@@ -120,20 +177,27 @@ export function Button({
   const primary = kind === 'primary';
   const off = disabled || busy;
   return (
-    <Pressable
+    <PressScale
       accessibilityRole="button"
       accessibilityState={{ disabled: off }}
       disabled={off}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         styles.button,
         {
-          backgroundColor: primary ? (off ? t.border : t.accent) : 'transparent',
-          borderColor: primary ? 'transparent' : off ? t.border : t.accent,
-          opacity: pressed ? 0.8 : 1,
+          backgroundColor: primary && off ? t.border : 'transparent',
+          borderColor: primary ? (off ? 'transparent' : GOLD_EDGE) : off ? t.border : t.accent,
         },
       ]}
     >
+      {primary && !off ? (
+        <LinearGradient
+          colors={GOLD}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       {busy ? (
         <ActivityIndicator color={primary ? t.accentText : t.accent} />
       ) : (
@@ -146,7 +210,7 @@ export function Button({
           {label}
         </Text>
       )}
-    </Pressable>
+    </PressScale>
   );
 }
 
@@ -173,7 +237,9 @@ export function Segmented<T extends string>({
             onPress={() => onChange(o.value)}
             style={[styles.segment, on && { backgroundColor: t.accent }]}
           >
-            <Text style={{ color: on ? t.accentText : t.text, fontWeight: '600' }}>{o.label}</Text>
+            <Text style={[styles.segmentText, { color: on ? t.accentText : t.text }]}>
+              {o.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -210,6 +276,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     minHeight: 46,
+    overflow: 'hidden',
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
@@ -224,6 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   segment: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8 },
+  segmentText: { fontSize: 13, fontFamily: font.title },
   sectionTitle: {
     fontSize: 12,
     fontFamily: font.title,

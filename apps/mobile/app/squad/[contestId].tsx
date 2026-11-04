@@ -1,20 +1,17 @@
 import { DEFAULT_SQUAD_RULES, validateSquad, type Player, type Position } from '@season/shared';
+import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../../src/api';
 import { countdown, formatCoins } from '../../src/format';
-import { useTheme } from '../../src/theme';
-import { Button, Card, Chip, Loading, Message, Screen } from '../../src/ui';
+import { SquadPitch } from '../../src/SquadPitch';
+import { font, useTheme } from '../../src/theme';
+import { Button, ClubCrest, Loading, Message, Screen, Segmented } from '../../src/ui';
 
 const ORDER: Position[] = ['GK', 'DEF', 'MID', 'FWD'];
-const NAMES: Record<Position, string> = {
-  GK: 'Goalkeeper',
-  DEF: 'Defenders',
-  MID: 'Midfielders',
-  FWD: 'Forwards',
-};
 
 export default function SquadScreen() {
   const t = useTheme();
@@ -34,6 +31,9 @@ export default function SquadScreen() {
   const [picked, setPicked] = useState<string[]>([]);
   const [captainId, setCaptain] = useState<string>();
   const [viceId, setVice] = useState<string>();
+  const [tab, setTab] = useState<Position>('GK');
+  const { height: windowHeight } = useWindowDimensions();
+  const { bottom } = useSafeAreaInsets();
 
   const join = useMutation({
     mutationFn: () =>
@@ -75,7 +75,7 @@ export default function SquadScreen() {
       setPicked([...picked, p.id]);
     }
   };
-  const club = (p: Player) => (p.clubId === f.homeClubId ? f.home.shortName : f.away.shortName);
+  const clubOf = (p: Player) => (p.clubId === f.homeClubId ? f.home : f.away);
 
   const status =
     picked.length < rules.size
@@ -83,55 +83,60 @@ export default function SquadScreen() {
       : !captainId || !viceId
         ? 'Choose a captain (C) and vice-captain (VC)'
         : check && !check.valid
-          ? check.errors[0]!.message
+          ? check.errors[0]!.message.replace(f.homeClubId, f.home.name).replace(
+              f.awayClubId,
+              f.away.name,
+            )
           : 'Ready';
 
   return (
     <Screen>
       <Stack.Screen options={{ title: `${f.home.shortName} v ${f.away.shortName}` }} />
-      <SectionList
-        sections={ORDER.map((pos) => ({
-          title: pos,
-          data: players.filter((p) => p.position === pos).sort((a, b) => b.credits - a.credits),
-        }))}
-        keyExtractor={(p) => p.id}
-        stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingBottom: 140 }}
-        ListHeaderComponent={
-          <View style={{ paddingTop: 16 }}>
-            <Card>
-              <Text style={[styles.heading, { color: t.text }]}>{c.name}</Text>
-              <Text style={{ color: t.muted, marginTop: 2 }}>
-                Entry {formatCoins(c.entryFee)} · top prize {formatCoins(c.topPrize)} · locks in{' '}
-                {countdown(f.kickoffAt)}
-              </Text>
-              <View style={styles.counts}>
-                {ORDER.map((pos) => {
-                  const [min, max] = rules.positions[pos];
-                  const n = count(pos);
-                  return (
-                    <Chip
-                      key={pos}
-                      label={`${pos} ${n}/${min === max ? min : `${min}-${max}`}`}
-                      tone={n >= min ? 'done' : 'todo'}
-                    />
-                  );
-                })}
-                <Chip
-                  label={`${credits} / ${rules.maxCredits} cr`}
-                  tone={credits > rules.maxCredits ? 'live' : 'muted'}
-                />
-              </View>
-            </Card>
-          </View>
-        }
-        renderSectionHeader={({ section }) => (
-          <Text style={[styles.section, { color: t.muted }]}>
-            {NAMES[section.title as Position]}
+      <View style={[styles.summary, { backgroundColor: t.solid }]}>
+        <View style={{ flexShrink: 1 }}>
+          <Text style={[styles.heading, { color: t.text }]} numberOfLines={1}>
+            {c.name}
           </Text>
-        )}
+          <Text style={{ color: t.muted, fontSize: 12 }} numberOfLines={1}>
+            Top prize {formatCoins(c.topPrize)} · locks in {countdown(f.kickoffAt)}
+          </Text>
+        </View>
+        <Text
+          style={[styles.credits, { color: credits > rules.maxCredits ? t.live : t.accent }]}
+          accessibilityLabel={`${credits} of ${rules.maxCredits} credits used`}
+        >
+          {credits}
+          <Text style={[styles.creditsOf, { color: t.muted }]}> / {rules.maxCredits} cr</Text>
+        </Text>
+      </View>
+      <SquadPitch
+        chosen={chosen}
+        rules={rules}
+        height={Math.max(184, Math.round(windowHeight * 0.29))}
+        colourOf={(p) => clubOf(p).colour}
+        captainId={captainId}
+        viceId={viceId}
+        onRemove={toggle}
+        onGap={setTab}
+      />
+      <Segmented
+        value={tab}
+        onChange={setTab}
+        options={ORDER.map((pos) => {
+          const [min, max] = rules.positions[pos];
+          return {
+            value: pos,
+            label: `${pos} ${count(pos)}/${min === max ? min : `${min}-${max}`}`,
+          };
+        })}
+      />
+      <FlatList
+        style={{ flex: 1 }}
+        data={players.filter((p) => p.position === tab).sort((a, b) => b.credits - a.credits)}
+        keyExtractor={(p) => p.id}
         renderItem={({ item }) => {
           const on = picked.includes(item.id);
+          const club = clubOf(item);
           return (
             <Pressable
               onPress={() => toggle(item)}
@@ -139,24 +144,19 @@ export default function SquadScreen() {
               accessibilityState={{ checked: on }}
               style={[
                 styles.player,
-                { borderColor: t.border, backgroundColor: on ? t.background : t.surface },
+                {
+                  borderColor: on ? t.accent : t.border,
+                  backgroundColor: on ? 'rgba(220, 183, 108, 0.12)' : t.surface,
+                },
               ]}
             >
-              <View
-                style={[
-                  styles.tick,
-                  {
-                    borderColor: on ? t.accent : t.border,
-                    backgroundColor: on ? t.accent : 'transparent',
-                  },
-                ]}
-              >
-                {on ? <Text style={{ color: t.accentText, fontWeight: '800' }}>✓</Text> : null}
-              </View>
+              <ClubCrest shortName={club.shortName} colour={club.colour} size={36} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: t.text, fontSize: 15 }}>{item.name}</Text>
-                <Text style={{ color: t.muted, fontSize: 12 }}>
-                  {club(item)} · {item.credits.toFixed(1)} cr
+                <Text style={{ color: t.text, fontSize: 15 }} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <Text style={[styles.price, { color: t.accent }]}>
+                  {item.credits.toFixed(1)} cr
                 </Text>
               </View>
               {on ? (
@@ -167,6 +167,9 @@ export default function SquadScreen() {
                       <Pressable
                         key={role}
                         hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Make ${item.name} ${role === 'C' ? 'captain' : 'vice-captain'}`}
+                        accessibilityState={{ selected: active }}
                         onPress={() => {
                           if (role === 'C') {
                             setCaptain(item.id);
@@ -185,7 +188,7 @@ export default function SquadScreen() {
                         ]}
                       >
                         <Text
-                          style={{ color: active ? t.accentText : t.accent, fontWeight: '700' }}
+                          style={[styles.roleText, { color: active ? t.accentText : t.accent }]}
                         >
                           {role}
                         </Text>
@@ -193,12 +196,19 @@ export default function SquadScreen() {
                     );
                   })}
                 </View>
-              ) : null}
+              ) : (
+                <Ionicons name="add-circle-outline" size={24} color={t.muted} />
+              )}
             </Pressable>
           );
         }}
       />
-      <View style={[styles.footer, { backgroundColor: t.solid, borderColor: t.border }]}>
+      <View
+        style={[
+          styles.footer,
+          { backgroundColor: t.solid, borderColor: t.border, paddingBottom: bottom + 12 },
+        ]}
+      >
         <Text style={{ color: join.error ? t.live : t.muted, marginBottom: 8 }} numberOfLines={2}>
           {join.error instanceof ApiError
             ? join.error.code === 'contest_full'
@@ -218,34 +228,31 @@ export default function SquadScreen() {
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 17, fontWeight: '700' },
-  counts: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-  section: {
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 6,
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 12,
   },
+  heading: { fontSize: 16, fontFamily: font.title },
+  credits: { fontSize: 20, fontFamily: font.display },
+  creditsOf: { fontSize: 12, fontFamily: font.title },
   player: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     marginHorizontal: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    minHeight: 52,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderRadius: 14,
+    minHeight: 54,
   },
-  tick: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  price: { fontSize: 12, fontFamily: font.title, marginTop: 1 },
   roles: { flexDirection: 'row', gap: 6 },
   role: {
     borderWidth: 1,
@@ -255,12 +262,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  roleText: { fontSize: 12, fontFamily: font.display },
   footer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

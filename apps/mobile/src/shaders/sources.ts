@@ -232,3 +232,38 @@ half4 main(float2 xy) {
   return finish(c, xy);
 }
 `;
+
+/** A floodlit pitch from above, with mown stripes and painted lines. Squad screen. */
+export const PITCH = `${COMMON}
+uniform float3 turf;
+uniform float3 paint;
+
+float rectEdge(float2 p, float2 centre, float2 half_) {
+  float2 d = abs(p - centre) - half_;
+  return abs(length(max(d, float2(0))) + min(max(d.x, d.y), 0.0));
+}
+float ink(float d) {
+  return smoothstep(1.4, 0.5, d);
+}
+
+half4 main(float2 xy) {
+  float2 uv = xy / size;
+  float stripes = step(0.5, fract(uv.y * 7.0));
+  float blades = fbm3(float2(uv.x * size.x * 0.5, uv.y * size.y * 0.12));
+  float3 c = turf * (0.62 + 0.2 * stripes) * (0.82 + 0.36 * blades);
+
+  float2 mid = size * 0.5;
+  float inset = size.x * 0.035;
+  float lines = ink(rectEdge(xy, mid, mid - inset));
+  lines = max(lines, ink(abs(xy.y - mid.y)));
+  lines = max(lines, ink(abs(length(xy - mid) - size.y * 0.17)));
+  float2 box = float2(size.x * 0.24, size.y * 0.1);
+  lines = max(lines, ink(rectEdge(xy, float2(mid.x, inset + box.y), box)));
+  lines = max(lines, ink(rectEdge(xy, float2(mid.x, size.y - inset - box.y), box)));
+  c = mix(c, paint, lines * 0.34);
+
+  float pool = exp(-length((uv - float2(0.5, 0.42)) * float2(1.0, 1.25)) * 1.9);
+  c *= 0.34 + 1.05 * pool;
+  return finish(c, xy);
+}
+`;

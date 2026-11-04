@@ -16,6 +16,7 @@ import {
   Gauge,
   Loading,
   Message,
+  Rise,
   Screen,
   SectionTitle,
 } from '../../src/ui';
@@ -121,8 +122,10 @@ export default function FixtureScreen() {
                   />
                 </View>
                 <SectionTitle>Tournaments</SectionTitle>
-                {contests.data.map((c) => (
-                  <ContestCard key={c.id} contest={c} joined={joined.has(c.id)} />
+                {contests.data.map((c, index) => (
+                  <Rise key={c.id} index={index}>
+                    <ContestCard contest={c} joined={joined.has(c.id)} />
+                  </Rise>
                 ))}
                 <SectionTitle>Players</SectionTitle>
               </>

@@ -5,7 +5,17 @@ import { RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'r
 import { api, ApiError, type MyEntry } from '../../src/api';
 import { countdown, formatCoins, formatKickoff, ordinal } from '../../src/format';
 import { font, useTheme } from '../../src/theme';
-import { Button, Card, Chip, Loading, Message, Screen, SectionTitle } from '../../src/ui';
+import {
+  Button,
+  Card,
+  Chip,
+  Gauge,
+  Loading,
+  Message,
+  Rise,
+  Screen,
+  SectionTitle,
+} from '../../src/ui';
 
 export default function TournamentsScreen() {
   const t = useTheme();
@@ -69,12 +79,16 @@ export default function TournamentsScreen() {
           </Card>
         ) : null}
         {upcoming.length > 0 ? <SectionTitle>Upcoming</SectionTitle> : null}
-        {upcoming.map((e) => (
-          <EntryCard key={e.entryId} entry={e} />
+        {upcoming.map((e, index) => (
+          <Rise key={e.entryId} index={index}>
+            <EntryCard entry={e} />
+          </Rise>
         ))}
         {past.length > 0 ? <SectionTitle>Results</SectionTitle> : null}
-        {past.map((e) => (
-          <EntryCard key={e.entryId} entry={e} />
+        {past.map((e, index) => (
+          <Rise key={e.entryId} index={index}>
+            <EntryCard entry={e} />
+          </Rise>
         ))}
       </ScrollView>
     </Screen>
@@ -85,6 +99,7 @@ function EntryCard({ entry: e }: { entry: MyEntry }) {
   const t = useTheme();
   const c = e.contest;
   const match = e.fixture ? `${e.fixture.home} v ${e.fixture.away}` : c.fixtureId;
+  const won = (e.prize ?? 0) > 0;
   let result: { label: string; tone: 'done' | 'todo' | 'live' | 'muted' };
   if (c.status === 'open') {
     result = {
@@ -100,25 +115,47 @@ function EntryCard({ entry: e }: { entry: MyEntry }) {
     <Card>
       <View style={styles.row}>
         <View style={{ flexShrink: 1 }}>
-          <Text style={{ color: t.muted, fontSize: 13 }}>
-            {match}
-            {e.fixture ? ` · ${formatKickoff(e.fixture.kickoffAt)}` : ''}
-          </Text>
+          <Text style={[styles.match, { color: t.accent }]}>{match}</Text>
           <Text style={[styles.heading, { color: t.text }]}>{c.name}</Text>
+          {e.fixture ? (
+            <Text style={{ color: t.muted, fontSize: 13, marginTop: 2 }}>
+              {formatKickoff(e.fixture.kickoffAt)}
+            </Text>
+          ) : null}
         </View>
-        <Chip label={result.label} tone={result.tone} />
+        {won ? (
+          <Text style={[styles.prize, { color: t.accent }]}>+{e.prize}</Text>
+        ) : (
+          <Chip label={result.label} tone={result.tone} />
+        )}
       </View>
-      <Text style={{ color: t.muted, marginTop: 8 }}>
-        {c.status === 'settled' && e.rank !== null
-          ? `${ordinal(e.rank)} of ${c.entries} · ${e.points} pts`
-          : `${c.entries} of ${c.capacity.toLocaleString('en-US')} joined · entry ${formatCoins(c.entryFee)}`}
-      </Text>
+      {c.status === 'settled' && e.rank !== null ? (
+        <View style={styles.standing}>
+          <Text style={[styles.rank, { color: t.text }]}>{ordinal(e.rank)}</Text>
+          <Text style={{ color: t.muted }}>
+            of {c.entries} · {e.points} pts{won ? ` · won ${formatCoins(e.prize!)}` : ''}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.fill}>
+          <Gauge share={c.entries / c.capacity} />
+          <Text style={{ color: t.muted, fontSize: 12, marginTop: 6 }}>
+            {c.entries} of {c.capacity.toLocaleString('en-US')} joined · entry{' '}
+            {formatCoins(c.entryFee)}
+          </Text>
+        </View>
+      )}
     </Card>
   );
 }
 
 const styles = StyleSheet.create({
   heading: { fontSize: 16, fontFamily: font.title },
+  match: { fontSize: 12, fontFamily: font.title, letterSpacing: 1, marginBottom: 2 },
+  prize: { fontSize: 26, fontFamily: font.heavy },
+  standing: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 10 },
+  rank: { fontSize: 22, fontFamily: font.display },
+  fill: { marginTop: 12 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   inviteRow: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
   input: {

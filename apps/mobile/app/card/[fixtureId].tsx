@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api, ApiError, type MasteryAnswer, type MasteryCall } from '../../src/api';
 import { formatKickoff } from '../../src/format';
+import { RewardMoment } from '../../src/RewardMoment';
 import { kitLight } from '../../src/shaders/looks';
 import { ShaderSurface } from '../../src/shaders/ShaderSurface';
 import { font, useTheme } from '../../src/theme';
@@ -57,6 +58,7 @@ export default function AnalysisCardScreen() {
     queryFn: () => api.fixture(fixtureId),
   });
   const [answers, setAnswers] = useState<Record<string, MasteryAnswer>>({});
+  const [paid, setPaid] = useState<number>();
 
   useEffect(() => {
     if (!card.data) return;
@@ -71,7 +73,11 @@ export default function AnalysisCardScreen() {
         card.data!.id,
         Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer })),
       ),
-    onSuccess: () => qc.invalidateQueries(),
+    onSuccess: () => {
+      // Only the first submission pays; card.data still shows the state from before this one.
+      if (card.data && !card.data.submittedAt) setPaid(card.data.rewardCoins);
+      return qc.invalidateQueries();
+    },
   });
 
   if (card.error instanceof ApiError && card.error.code === 'no_card') {
@@ -158,6 +164,13 @@ export default function AnalysisCardScreen() {
           </View>
         ) : null}
       </ScrollView>
+      <RewardMoment
+        visible={paid !== undefined}
+        coins={paid}
+        title="Card submitted"
+        detail="You can change your calls until kick-off. They are graded after full time."
+        onClose={() => setPaid(undefined)}
+      />
     </Screen>
   );
 }

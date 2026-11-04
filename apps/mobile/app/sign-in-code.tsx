@@ -5,7 +5,8 @@ import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api, ApiError } from '../src/api';
 import { useAuth } from '../src/auth';
 import { codeRequestError } from '../src/phone';
-import { useTheme } from '../src/theme';
+import { ShaderSurface } from '../src/shaders/ShaderSurface';
+import { font, useTheme } from '../src/theme';
 import { Button, Card, Screen } from '../src/ui';
 
 /** Errors after which this code can no longer be used, so the player needs a new one. */
@@ -121,36 +122,54 @@ export default function SignInCodeScreen() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ paddingTop: 16 }} keyboardShouldPersistTaps="handled">
+      <ShaderSurface look="floodlight" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.headline, { color: t.text }]}>Check your messages</Text>
         <Card>
           <Text style={{ color: t.text, lineHeight: 20 }}>
-            Code sent to <Text style={{ fontWeight: '700' }}>{maskedPhone}</Text>
+            Code sent to <Text style={{ fontFamily: font.title }}>{maskedPhone}</Text>
           </Text>
-          <Text style={[styles.label, { color: t.muted }]}>6-digit code</Text>
-          <TextInput
-            style={[
-              styles.input,
-              { color: t.text, borderColor: t.border, backgroundColor: t.surface },
-            ]}
-            value={code}
-            onChangeText={(text) => {
-              const digits = text.replace(/\D/g, '').slice(0, 6);
-              setCode(digits);
-              if (verify.error && !needsNewCode) verify.reset();
-              // Sign in as soon as the code is complete, including when the phone fills it in.
-              if (digits.length === 6 && digits !== code) submit(digits);
-            }}
-            placeholder="123456"
-            placeholderTextColor={t.muted}
-            keyboardType="number-pad"
-            inputMode="numeric"
-            autoComplete="sms-otp"
-            textContentType="oneTimeCode"
-            maxLength={6}
-            autoFocus
-            editable={!needsNewCode}
-            accessibilityLabel="6-digit code"
-          />
+          <View style={styles.boxes}>
+            {Array.from({ length: 6 }, (_, i) => {
+              const filled = i < code.length;
+              const here = i === Math.min(code.length, 5);
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.box,
+                    {
+                      backgroundColor: t.solid,
+                      borderColor: verify.error ? t.live : here || filled ? t.accent : t.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.digit, { color: t.text }]}>{code[i] ?? ''}</Text>
+                </View>
+              );
+            })}
+            {/* Boxes are only the look: one real field on top keeps paste and SMS autofill. */}
+            <TextInput
+              style={styles.input}
+              caretHidden
+              value={code}
+              onChangeText={(text) => {
+                const digits = text.replace(/\D/g, '').slice(0, 6);
+                setCode(digits);
+                if (verify.error && !needsNewCode) verify.reset();
+                // Sign in as soon as the code is complete, including when the phone fills it in.
+                if (digits.length === 6 && digits !== code) submit(digits);
+              }}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              autoComplete="sms-otp"
+              textContentType="oneTimeCode"
+              maxLength={6}
+              autoFocus
+              editable={!needsNewCode}
+              accessibilityLabel="6-digit code"
+            />
+          </View>
           {__DEV__ ? (
             <Text style={{ color: t.muted, fontSize: 12, marginTop: 6 }}>
               Test mode: the code is printed in the API server log.
@@ -173,14 +192,20 @@ export default function SignInCodeScreen() {
                   busy={verify.isPending}
                   onPress={() => submit(code)}
                 />
-                <Button
-                  kind="secondary"
-                  label={wait > 0 ? `Resend code in ${wait}s` : 'Resend code'}
-                  disabled={wait > 0}
-                  busy={resend.isPending}
-                  onPress={() => resend.mutate()}
-                />
-                <Button kind="secondary" label="Change number" onPress={backToNumber} />
+                <View style={styles.pair}>
+                  <View style={{ flex: 1 }}>
+                    <Button
+                      kind="secondary"
+                      label={wait > 0 ? `Resend in ${wait}s` : 'Resend code'}
+                      disabled={wait > 0}
+                      busy={resend.isPending}
+                      onPress={() => resend.mutate()}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Button kind="secondary" label="Edit number" onPress={backToNumber} />
+                  </View>
+                </View>
               </>
             )}
           </View>
@@ -191,13 +216,24 @@ export default function SignInCodeScreen() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 13, fontWeight: '600', marginTop: 16, marginBottom: 6 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    minHeight: 48,
-    fontSize: 22,
-    letterSpacing: 6,
+  content: { flexGrow: 1, justifyContent: 'flex-end', paddingBottom: 24 },
+  headline: {
+    fontSize: 30,
+    lineHeight: 36,
+    fontFamily: font.heavy,
+    marginHorizontal: 16,
+    marginBottom: 14,
   },
+  boxes: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  box: {
+    width: 44,
+    height: 54,
+    borderWidth: 1,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  digit: { fontSize: 22, fontFamily: font.display },
+  input: { ...StyleSheet.absoluteFill, opacity: 0.01, color: 'transparent', fontSize: 22 },
+  pair: { flexDirection: 'row', gap: 8 },
 });

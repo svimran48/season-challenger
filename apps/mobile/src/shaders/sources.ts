@@ -267,3 +267,38 @@ half4 main(float2 xy) {
   return finish(c, xy);
 }
 `;
+
+/** Slow rays of gold wheeling out of a warm centre, with sparks rising. Reward moments. */
+export const BURST = `${COMMON}
+uniform float3 deep;
+uniform float3 ember;
+uniform float3 flare;
+
+half4 main(float2 xy) {
+  float t = time * 0.3;
+  float scale = min(size.x, size.y);
+  float2 p = (xy - size * float2(0.5, 0.44)) / scale;
+  float r = length(p);
+  float2 dir = p / max(r, 0.001);
+
+  // Sampling noise on a circle keeps the rays from showing a seam where the angle wraps.
+  float a = fbm3(dir * 2.6 + float2(t, -t * 0.7));
+  float b = fbm3(dir * 5.3 + float2(-t * 1.3, t));
+  float rays = smoothstep(0.34, 0.8, a * 0.65 + b * 0.35);
+
+  float3 c = deep;
+  // Faded out near the middle, so they do not pinch to a point behind the text.
+  c += ember * rays * exp(-r * 1.5) * 1.15 * smoothstep(0.04, 0.34, r);
+  c += ember * exp(-r * 2.6) * 0.55;
+  c += flare * exp(-r * r * 9.0) * 0.1;
+
+  float2 g = float2(xy.x / scale * 15.0, xy.y / scale * 15.0 + time * 0.8);
+  float2 cell = floor(g);
+  float2 at = fract(g) - 0.5 + (float2(hash(cell), hash(cell + 2.3)) - 0.5) * 0.7;
+  float twinkle = 0.5 + 0.5 * sin(time * 3.0 + hash(cell + 9.1) * 40.0);
+  float spark = step(0.8, hash(cell + 5.5)) * smoothstep(0.07, 0.0, length(at)) * twinkle;
+  c += flare * spark * exp(-r * 1.1);
+
+  return finish(c, xy);
+}
+`;

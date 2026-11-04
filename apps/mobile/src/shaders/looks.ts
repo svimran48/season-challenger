@@ -1,4 +1,4 @@
-import { CLASH, FLOODLIGHT, MOLTEN, PITCH, SILK } from './sources';
+import { BURST, CLASH, FLOODLIGHT, MOLTEN, PITCH, SILK } from './sources';
 
 type Colour = readonly [number, number, number];
 
@@ -35,6 +35,11 @@ export const LOOKS = {
     source: PITCH,
     uniforms: { turf: [0.07, 0.42, 0.22], paint: [1, 0.96, 0.84] },
     renderScale: 1,
+  },
+  burst: {
+    source: BURST,
+    uniforms: { deep: [0.02, 0.018, 0.016], ember: [0.72, 0.48, 0.16], flare: [1, 0.86, 0.56] },
+    renderScale: 0.5,
   },
   gold: metal([0.11, 0.06, 0.015], [0.86, 0.62, 0.24], [1, 0.93, 0.72]),
   Scout: metal([0.07, 0.04, 0.03], [0.55, 0.33, 0.2], [1, 0.8, 0.62]),

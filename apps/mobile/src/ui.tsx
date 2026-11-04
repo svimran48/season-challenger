@@ -1,6 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useState, type ComponentProps, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -8,17 +15,23 @@ import {
   Text,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { ShaderSurface } from './shaders/ShaderSurface';
 import type { LookName } from './shaders/looks';
 import { font, useTheme } from './theme';
+
+export const GOLD = ['#f4dc9f', '#dcb76c', '#b98f45'] as const;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const PRESS_SPRING = { damping: 18, stiffness: 340 };
@@ -138,11 +151,84 @@ export function Chip({ label, tone }: { label: string; tone: 'done' | 'todo' | '
   );
 }
 
+/** A bar of the page yet to come, with a gold light passing over it. */
+function Shimmer({ height, width = '100%' }: { height: number; width?: `${number}%` }) {
+  const x = useSharedValue(-1);
+  useEffect(() => {
+    x.value = withRepeat(withTiming(1, { duration: 1500 }), -1);
+  }, [x]);
+  const pass = useAnimatedStyle(() => ({ transform: [{ translateX: x.value * 320 }] }));
+  return (
+    <View style={[styles.shimmer, { height, width }]}>
+      <Animated.View style={[styles.shimmerLight, pass]}>
+        <LinearGradient
+          colors={['transparent', 'rgba(220, 183, 108, 0.2)', 'transparent']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 1, y: 0.5 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </Animated.View>
+    </View>
+  );
+}
+
 export function Loading() {
   const t = useTheme();
   return (
-    <View style={styles.center}>
-      <ActivityIndicator color={t.accent} />
+    <View style={styles.loading} accessibilityRole="progressbar" accessibilityLabel="Loading">
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}>
+          <Shimmer height={12} width="38%" />
+          <Shimmer height={22} width="72%" />
+          <Shimmer height={46} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** A whole number that counts up to its value, for coins arriving. */
+export function CountUp({ value, style }: { value: number; style?: StyleProp<TextStyle> }) {
+  const reduced = useReducedMotion();
+  const [shown, setShown] = useState(reduced ? value : 0);
+  const from = useRef(shown);
+  useEffect(() => {
+    const start = from.current;
+    if (reduced || start === value) {
+      from.current = value;
+      setShown(value);
+      return;
+    }
+    const began = Date.now();
+    const timer = setInterval(() => {
+      const progress = Math.min(1, (Date.now() - began) / 800);
+      const eased = 1 - (1 - progress) ** 3;
+      const next = Math.round(start + (value - start) * eased);
+      from.current = next;
+      setShown(next);
+      if (progress === 1) clearInterval(timer);
+    }, 30);
+    return () => clearInterval(timer);
+  }, [reduced, value]);
+  return (
+    <Text style={style} accessibilityLabel={value.toLocaleString('en-US')}>
+      {shown.toLocaleString('en-US')}
+    </Text>
+  );
+}
+
+/** A card cut like a ticket: details above a torn line, what to do below it. */
+export function Ticket({ top, bottom }: { top: ReactNode; bottom: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={[styles.ticket, { backgroundColor: t.surface, borderColor: t.border }]}>
+      <View style={styles.ticketPart}>{top}</View>
+      <View style={styles.tear}>
+        <View style={[styles.notch, styles.notchLeft, { borderColor: t.border }]} />
+        <View style={[styles.tearLine, { borderColor: t.border }]} />
+        <View style={[styles.notch, styles.notchRight, { borderColor: t.border }]} />
+      </View>
+      <View style={styles.ticketPart}>{bottom}</View>
     </View>
   );
 }
@@ -157,7 +243,6 @@ export function Message({ title, body }: { title: string; body?: string }) {
   );
 }
 
-const GOLD = ['#f4dc9f', '#dcb76c', '#b98f45'] as const;
 const GOLD_EDGE = 'rgba(255, 240, 200, 0.55)';
 
 export function Button({
@@ -253,6 +338,29 @@ export function SectionTitle({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  loading: { flex: 1, paddingTop: 16 },
+  shimmer: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 10,
+  },
+  shimmerLight: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 200 },
+  ticket: { borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginBottom: 12 },
+  ticketPart: { padding: 16 },
+  tear: { height: 18, justifyContent: 'center' },
+  tearLine: { borderTopWidth: 1, borderStyle: 'dashed', marginHorizontal: 14 },
+  notch: {
+    position: 'absolute',
+    top: 0,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    backgroundColor: '#07080b',
+  },
+  notchLeft: { left: -9 },
+  notchRight: { right: -9 },
   crest: {
     alignItems: 'center',
     justifyContent: 'center',

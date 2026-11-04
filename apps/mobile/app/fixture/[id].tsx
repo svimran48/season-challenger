@@ -65,7 +65,7 @@ export default function FixtureScreen() {
 
   const f = fixture.data;
   const pointsOf = new Map(points.data?.players.map((p) => [p.playerId, p.points]));
-  const clubOf = (p: Player) => (p.clubId === f.homeClubId ? f.home.shortName : f.away.shortName);
+  const clubOf = (p: Player) => (p.clubId === f.homeClubId ? f.home : f.away);
   const sections = ORDER.map((position) => ({
     title: POSITION_NAMES[position],
     data: f.players
@@ -137,11 +137,15 @@ export default function FixtureScreen() {
         )}
         renderItem={({ item }) => (
           <View style={[styles.player, { borderColor: t.border, backgroundColor: t.surface }]}>
-            <View style={styles.playerName}>
-              <Text style={{ color: t.text, fontSize: 15 }}>{item.name}</Text>
-              <Text style={{ color: t.muted, fontSize: 12 }}>{clubOf(item)}</Text>
+            <View style={styles.playerWho}>
+              <ClubCrest
+                shortName={clubOf(item).shortName}
+                colour={clubOf(item).colour}
+                size={34}
+              />
+              <Text style={{ color: t.text, fontSize: 15, flexShrink: 1 }}>{item.name}</Text>
             </View>
-            <Text style={{ color: t.text, fontWeight: '600' }}>
+            <Text style={[styles.playerValue, { color: t.accent }]}>
               {finished
                 ? formatPoints(pointsOf.get(item.id) ?? 0)
                 : `${item.credits.toFixed(1)} cr`}
@@ -244,5 +248,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  playerName: { gap: 2 },
+  playerWho: { flexDirection: 'row', alignItems: 'center', gap: 12, flexShrink: 1 },
+  playerValue: { fontSize: 14, fontFamily: font.title },
 });

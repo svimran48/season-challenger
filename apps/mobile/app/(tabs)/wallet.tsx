@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { Link } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -11,17 +12,20 @@ import {
   type WalletActivity,
 } from '../../src/api';
 import { formatCoins, formatDay } from '../../src/format';
+import { RewardMoment } from '../../src/RewardMoment';
 import { font, useTheme } from '../../src/theme';
 import {
   Button,
   Card,
   MetalCard,
   Chip,
+  CountUp,
   Loading,
   Message,
   Screen,
   SectionTitle,
   Segmented,
+  Ticket,
 } from '../../src/ui';
 
 const ACTIVITY_LABELS: Record<WalletActivity['kind'], string> = {
@@ -61,7 +65,14 @@ export default function WalletScreen() {
   const idState = idCheck.data?.status;
   const refreshAll = () => qc.invalidateQueries();
 
-  const checkIn = useMutation({ mutationFn: api.checkIn, onSuccess: refreshAll });
+  const [claimed, setClaimed] = useState<number>();
+  const checkIn = useMutation({
+    mutationFn: api.checkIn,
+    onSuccess: (result) => {
+      if (!result.alreadyCheckedIn) setClaimed(result.coins);
+      return refreshAll();
+    },
+  });
 
   if (wallet.isError) {
     return (
@@ -82,7 +93,7 @@ export default function WalletScreen() {
       >
         <MetalCard look="gold">
           <Text style={[styles.label, { color: t.text }]}>Your coins</Text>
-          <Text style={[styles.total, { color: t.text }]}>{w.total.toLocaleString('en-US')}</Text>
+          <CountUp value={w.total} style={[styles.total, { color: t.text }]} />
           <View style={styles.split}>
             <View style={styles.half}>
               <Text style={[styles.amount, { color: t.text }]}>
@@ -121,6 +132,7 @@ export default function WalletScreen() {
               />
             )}
           </View>
+          <Streak days={w.checkIn.streak} checkedIn={w.checkIn.checkedIn} />
         </Card>
 
         <SectionTitle>Vouchers</SectionTitle>
@@ -194,16 +206,27 @@ export default function WalletScreen() {
                 i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderColor: t.border },
               ]}
             >
-              <View>
+              <View
+                style={[
+                  styles.activityIcon,
+                  { borderColor: a.bonus + a.winnings >= 0 ? t.accent : t.border },
+                ]}
+              >
+                <Ionicons
+                  name={a.bonus + a.winnings >= 0 ? 'arrow-down' : 'arrow-up'}
+                  size={15}
+                  color={a.bonus + a.winnings >= 0 ? t.accent : t.muted}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
                 <Text style={{ color: t.text }}>{ACTIVITY_LABELS[a.kind]}</Text>
                 <Text style={{ color: t.muted, fontSize: 12 }}>{formatDay(a.createdAt)}</Text>
               </View>
               <Text
-                style={{
-                  color: a.bonus + a.winnings >= 0 ? t.accent : t.text,
-                  fontWeight: '600',
-                  fontVariant: ['tabular-nums'],
-                }}
+                style={[
+                  styles.activityAmount,
+                  { color: a.bonus + a.winnings >= 0 ? t.accent : t.text },
+                ]}
               >
                 {a.bonus + a.winnings > 0 ? '+' : ''}
                 {(a.bonus + a.winnings).toLocaleString('en-US')}
@@ -217,7 +240,46 @@ export default function WalletScreen() {
           discounts at partner shops and travel companies, tied to your account.
         </Text>
       </ScrollView>
+      <RewardMoment
+        visible={claimed !== undefined}
+        coins={claimed}
+        title="Daily reward"
+        detail="Come back tomorrow. Every 7th day in a row pays extra."
+        onClose={() => setClaimed(undefined)}
+      />
     </Screen>
+  );
+}
+
+/** A week of check-ins, with the 7th day marked because it pays extra. */
+function Streak({ days, checkedIn }: { days: number; checkedIn: boolean }) {
+  const t = useTheme();
+  // A streak of 7 that has just been claimed shows a full week, not an empty one.
+  const lit = checkedIn && days > 0 ? ((days - 1) % 7) + 1 : days % 7;
+  return (
+    <View style={styles.streak} accessible accessibilityLabel={`${lit} of 7 days this week`}>
+      {Array.from({ length: 7 }, (_, i) => {
+        const on = i < lit;
+        return (
+          <View
+            key={i}
+            style={[
+              styles.day,
+              {
+                borderColor: on ? t.accent : t.border,
+                backgroundColor: on ? t.accent : 'transparent',
+              },
+            ]}
+          >
+            {i === 6 ? (
+              <Ionicons name="star" size={12} color={on ? t.accentText : t.muted} />
+            ) : (
+              <Text style={[styles.dayText, { color: on ? t.accentText : t.muted }]}>{i + 1}</Text>
+            )}
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -235,33 +297,44 @@ function OfferCard({ offer, onRedeemed }: { offer: VoucherOffer; onRedeemed: () 
   const blocked = offer.canRedeem === false;
   const error = redeem.error instanceof ApiError ? redeem.error.message : undefined;
   return (
-    <Card>
-      <View style={styles.rowBetween}>
-        <View style={{ flexShrink: 1, paddingRight: 12 }}>
-          <Text style={{ color: t.muted, fontSize: 13 }}>{offer.partnerName}</Text>
-          <Text style={[styles.heading, { color: t.text }]}>{offer.title}</Text>
-          <Text style={{ color: t.text, marginTop: 2 }}>{offer.discountText}</Text>
-        </View>
-        <Text style={[styles.cost, { color: t.accent }]}>{offer.costCoins.toLocaleString()}</Text>
-      </View>
-      <Text style={{ color: t.muted, fontSize: 13, marginTop: 8 }}>
-        {offer.terms} Valid {offer.validForDays} days.
-        {offer.stockLeft !== null ? ` ${offer.stockLeft} left.` : ''}
-      </Text>
-      <View style={{ marginTop: 12 }}>
-        <Button
-          label={
-            blocked
-              ? (REASONS[offer.reason ?? ''] ?? 'Not available')
-              : `Redeem for ${formatCoins(offer.costCoins)}`
-          }
-          disabled={blocked}
-          busy={redeem.isPending}
-          onPress={() => redeem.mutate()}
-        />
-      </View>
-      {error ? <Text style={{ color: t.live, marginTop: 8 }}>{error}</Text> : null}
-    </Card>
+    <Ticket
+      top={
+        <>
+          <View style={styles.rowBetween}>
+            <View style={{ flexShrink: 1, paddingRight: 12 }}>
+              <Text style={[styles.partner, { color: t.accent }]}>{offer.partnerName}</Text>
+              <Text style={[styles.heading, { color: t.text }]}>{offer.title}</Text>
+              <Text style={{ color: t.text, marginTop: 2 }}>{offer.discountText}</Text>
+            </View>
+            <View style={styles.price}>
+              <Text style={[styles.cost, { color: t.accent }]}>
+                {offer.costCoins.toLocaleString('en-US')}
+              </Text>
+              <Text style={{ color: t.muted, fontSize: 12 }}>coins</Text>
+            </View>
+          </View>
+          <Text style={{ color: t.muted, fontSize: 13, marginTop: 8 }}>
+            {offer.terms} Valid {offer.validForDays} days.
+            {offer.stockLeft !== null ? ` ${offer.stockLeft} left.` : ''}
+          </Text>
+        </>
+      }
+      bottom={
+        <>
+          <Button
+            label={
+              blocked
+                ? (REASONS[offer.reason ?? ''] ?? 'Not available')
+                : `Redeem for ${formatCoins(offer.costCoins)}`
+            }
+            disabled={blocked}
+            busy={redeem.isPending}
+            onPress={() => redeem.mutate()}
+          />
+          {error ? <Text style={{ color: t.live, marginTop: 8 }}>{error}</Text> : null}
+        </>
+      }
+    />
   );
 }
 
@@ -269,21 +342,31 @@ function VoucherCard({ voucher }: { voucher: MyVoucher }) {
   const t = useTheme();
   const active = voucher.status === 'active';
   return (
-    <Card>
-      <View style={styles.rowBetween}>
-        <View style={{ flexShrink: 1 }}>
-          <Text style={{ color: t.muted, fontSize: 13 }}>{voucher.partnerName}</Text>
-          <Text style={[styles.heading, { color: t.text }]}>{voucher.title}</Text>
+    <Ticket
+      top={
+        <View style={styles.rowBetween}>
+          <View style={{ flexShrink: 1, paddingRight: 12 }}>
+            <Text style={[styles.partner, { color: t.accent }]}>{voucher.partnerName}</Text>
+            <Text style={[styles.heading, { color: t.text }]}>{voucher.title}</Text>
+            <Text style={{ color: t.muted, fontSize: 13, marginTop: 2 }}>
+              {voucher.discountText}.
+            </Text>
+          </View>
+          <Chip
+            label={active ? `Until ${formatDay(voucher.expiresAt)}` : voucher.status}
+            tone={active ? 'done' : 'muted'}
+          />
         </View>
-        <Chip
-          label={active ? `Until ${formatDay(voucher.expiresAt)}` : voucher.status}
-          tone={active ? 'done' : 'muted'}
-        />
-      </View>
-      <Text style={[styles.code, { color: t.text, borderColor: t.border }]}>{voucher.code}</Text>
-      <Text style={{ color: t.muted, fontSize: 13 }}>{voucher.discountText}.</Text>
-      {active ? <ShowAtTill voucherId={voucher.id} /> : null}
-    </Card>
+      }
+      bottom={
+        <>
+          <Text style={[styles.code, { color: t.text, borderColor: t.border, marginTop: 0 }]}>
+            {voucher.code}
+          </Text>
+          {active ? <ShowAtTill voucherId={voucher.id} /> : null}
+        </>
+      }
+    />
   );
 }
 
@@ -339,14 +422,36 @@ function ShowAtTill({ voucherId }: { voucherId: string }) {
 
 const styles = StyleSheet.create({
   content: { paddingTop: 16, paddingBottom: 32 },
-  label: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
+  label: { fontSize: 12, fontFamily: font.title, letterSpacing: 1.6, textTransform: 'uppercase' },
+  streak: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
+  day: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayText: { fontSize: 12, fontFamily: font.title },
+  partner: { fontSize: 12, fontFamily: font.title, letterSpacing: 1, marginBottom: 2 },
+  price: { alignItems: 'flex-end' },
+  activityIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  activityAmount: { fontFamily: font.title, fontVariant: ['tabular-nums'] },
   total: { fontSize: 44, fontFamily: font.heavy, marginVertical: 4, fontVariant: ['tabular-nums'] },
   split: { flexDirection: 'row', gap: 16, marginTop: 8 },
   half: { flex: 1, gap: 2 },
   amount: { fontSize: 20, fontFamily: font.display, fontVariant: ['tabular-nums'] },
   heading: { fontSize: 16, fontFamily: font.title },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cost: { fontSize: 20, fontWeight: '800' },
+  cost: { fontSize: 22, fontFamily: font.heavy },
   activity: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -354,8 +459,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   code: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 20,
+    fontFamily: font.display,
     letterSpacing: 2,
     textAlign: 'center',
     borderWidth: 1,

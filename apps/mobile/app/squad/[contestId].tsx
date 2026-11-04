@@ -7,6 +7,7 @@ import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, ApiError } from '../../src/api';
 import { countdown, formatCoins } from '../../src/format';
+import { RewardMoment } from '../../src/RewardMoment';
 import { SquadPitch } from '../../src/SquadPitch';
 import { font, useTheme } from '../../src/theme';
 import { Button, ClubCrest, Loading, Message, Screen, Segmented } from '../../src/ui';
@@ -32,6 +33,7 @@ export default function SquadScreen() {
   const [captainId, setCaptain] = useState<string>();
   const [viceId, setVice] = useState<string>();
   const [tab, setTab] = useState<Position>('GK');
+  const [joined, setJoined] = useState(false);
   const { height: windowHeight } = useWindowDimensions();
   const { bottom } = useSafeAreaInsets();
 
@@ -40,7 +42,7 @@ export default function SquadScreen() {
       api.join(contestId, { playerIds: picked, captainId: captainId!, viceCaptainId: viceId! }),
     onSuccess: async () => {
       await qc.invalidateQueries();
-      router.back();
+      setJoined(true);
     },
   });
 
@@ -223,6 +225,15 @@ export default function SquadScreen() {
           onPress={() => join.mutate()}
         />
       </View>
+      <RewardMoment
+        visible={joined}
+        title="You're in"
+        detail={`${c.name}, ${f.home.name} v ${f.away.name}. Your squad locks at kick-off.`}
+        onClose={() => {
+          setJoined(false);
+          router.back();
+        }}
+      />
     </Screen>
   );
 }

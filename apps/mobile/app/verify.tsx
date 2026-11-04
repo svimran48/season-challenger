@@ -12,7 +12,7 @@ import {
   type PickedImage,
   type VerificationStatus,
 } from '../src/api';
-import { useTheme } from '../src/theme';
+import { font, useTheme } from '../src/theme';
 import { Button, Card, Loading, Screen, SectionTitle, Segmented } from '../src/ui';
 
 const SIDES: Record<CaptureLayout, ImageSide[]> = {
@@ -295,14 +295,14 @@ function PhotoSlot({
 }
 
 const styles = StyleSheet.create({
-  heading: { fontSize: 17, fontWeight: '700' },
+  heading: { fontSize: 17, fontFamily: font.title },
   body: { fontSize: 14, lineHeight: 20, marginTop: 6 },
   small: { fontSize: 12, lineHeight: 17, marginTop: 12 },
   hint: { fontSize: 13, marginHorizontal: 16, marginTop: -4, marginBottom: 12, lineHeight: 18 },
   label: { fontSize: 13, fontWeight: '600', marginTop: 16, marginBottom: 6 },
   input: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, minHeight: 44, fontSize: 16 },
   slotRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  slotTitle: { fontSize: 15, fontWeight: '700' },
+  slotTitle: { fontSize: 15, fontFamily: font.title },
   thumb: { width: 112, height: 72, borderRadius: 8 },
   emptyThumb: {
     borderWidth: 1.5,

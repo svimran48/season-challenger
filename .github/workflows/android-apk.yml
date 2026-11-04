@@ -1,0 +1,49 @@
+name: Android APK
+
+# Builds a test APK by hand: Actions, Android APK, Run workflow. The API address goes into the app,
+# so a new address needs a new build. Signed with the Expo template's shared debug key, which is
+# public: fine for trying the app, never for a release. docs/RELEASE.md has the release route.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: The API's HTTPS address
+        required: true
+
+jobs:
+  apk:
+    name: Build the APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_ENV: development
+      - name: Generate the Android project
+        working-directory: apps/mobile
+        run: CI=1 npx expo prebuild --platform android --no-install
+      - name: Build
+        working-directory: apps/mobile/android
+        run: >-
+          ./gradlew assembleRelease --no-daemon
+          -PreactNativeArchitectures=arm64-v8a
+          -Dorg.gradle.jvmargs=-Xmx5g
+      - uses: actions/upload-artifact@v4
+        with:
+          name: season-challenger-apk
+          path: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 7
+          if-no-files-found: error

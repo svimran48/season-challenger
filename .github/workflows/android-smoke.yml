@@ -1,0 +1,63 @@
+name: Android smoke test
+
+# Builds the app for an emulator, opens it on a real Android system, and keeps a screenshot and the
+# device log. It stops at the sign-in screen, because Google sign-in needs a real person. Start by
+# hand: Actions, Android smoke test, Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: The API's HTTPS address
+        required: true
+
+jobs:
+  smoke:
+    name: Open the app on an emulator
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_ENV: development
+      - name: Generate the Android project
+        working-directory: apps/mobile
+        run: CI=1 npx expo prebuild --platform android --no-install
+      - name: Build for the emulator
+        working-directory: apps/mobile/android
+        run: >-
+          ./gradlew assembleRelease --no-daemon
+          -PreactNativeArchitectures=x86_64
+          -Dorg.gradle.jvmargs=-Xmx5g
+      - name: Allow the emulator to use KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Open the app
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          script: sh .github/android-smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-smoke-results
+          path: smoke/
+          retention-days: 7

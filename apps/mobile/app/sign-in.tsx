@@ -60,6 +60,7 @@ export default function SignInScreen() {
 
   const google = googleSignInSupported ? methods.data.google : null;
   const phone = methods.data.phone;
+  const guest = methods.data.guest === true;
 
   return (
     <Screen>
@@ -70,7 +71,7 @@ export default function SignInScreen() {
           <Text style={[styles.tagline, { color: t.text }]}>Read the game.{'\n'}Prove it.</Text>
         </View>
         <Card>
-          {!google && !phone ? (
+          {!google && !phone && !guest ? (
             <Text style={{ color: t.muted, lineHeight: 20 }}>
               Sign-in is not set up on this server yet. Please try again later.
             </Text>
@@ -88,6 +89,14 @@ export default function SignInScreen() {
             </View>
           ) : null}
           {phone ? <PhoneForm primary={!google} /> : null}
+          {guest && (google || phone) ? (
+            <View style={styles.divider}>
+              <View style={[styles.rule, { backgroundColor: t.border }]} />
+              <Text style={{ color: t.muted, marginHorizontal: 12 }}>or</Text>
+              <View style={[styles.rule, { backgroundColor: t.border }]} />
+            </View>
+          ) : null}
+          {guest ? <GuestButton primary={!google && !phone} /> : null}
         </Card>
       </ScrollView>
     </Screen>
@@ -129,6 +138,35 @@ function GoogleSignInButton({
       />
       {go.error ? (
         <Text style={{ color: t.live, marginTop: 8 }}>{googleError(go.error, phoneOffered)}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function GuestButton({ primary }: { primary: boolean }) {
+  const t = useTheme();
+  const { signIn } = useAuth();
+  const go = useMutation({
+    mutationFn: api.signInAsGuest,
+    onSuccess: async (result) => {
+      await signIn(result.token);
+    },
+  });
+  return (
+    <View style={{ marginTop: 8 }}>
+      <Button
+        label="Continue as guest"
+        kind={primary ? 'primary' : 'secondary'}
+        busy={go.isPending}
+        onPress={() => go.mutate()}
+      />
+      <Text style={{ color: t.muted, lineHeight: 20, marginTop: 8 }}>
+        No number needed. Your guest account lives on this phone only.
+      </Text>
+      {go.error ? (
+        <Text style={{ color: t.live, marginTop: 8 }}>
+          {go.error instanceof ApiError ? go.error.message : unreachableHint}
+        </Text>
       ) : null}
     </View>
   );

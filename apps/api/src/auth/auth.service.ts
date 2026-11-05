@@ -28,6 +28,10 @@ export interface AuthSettings {
   sessionDays: number;
   /** Off when no SMS provider can deliver codes (production without one). */
   phoneEnabled: boolean;
+  /** Guest accounts: play without a phone number or Google. */
+  guestEnabled: boolean;
+  /** New guest accounts per client address per rolling hour. */
+  guestsPerAddressPerHour: number;
 }
 
 export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
@@ -39,6 +43,8 @@ export const DEFAULT_AUTH_SETTINGS: AuthSettings = {
   maxAttempts: 5,
   sessionDays: 90,
   phoneEnabled: true,
+  guestEnabled: true,
+  guestsPerAddressPerHour: 10,
 };
 
 export type AuthErrorCode =
@@ -51,7 +57,8 @@ export type AuthErrorCode =
   | 'signed_out'
   | 'phone_unavailable'
   | 'google_rejected'
-  | 'google_unavailable';
+  | 'google_unavailable'
+  | 'too_many_guests';
 
 const STATUS: Record<AuthErrorCode, HttpStatus> = {
   invalid_phone: HttpStatus.BAD_REQUEST,
@@ -64,6 +71,7 @@ const STATUS: Record<AuthErrorCode, HttpStatus> = {
   phone_unavailable: HttpStatus.SERVICE_UNAVAILABLE,
   google_rejected: HttpStatus.UNAUTHORIZED,
   google_unavailable: HttpStatus.SERVICE_UNAVAILABLE,
+  too_many_guests: HttpStatus.TOO_MANY_REQUESTS,
 };
 
 /** A sign-in failure the app can act on: { statusCode, error: code, message, ...extra }. */
@@ -91,6 +99,8 @@ const seconds = (ms: number) => Math.max(1, Math.ceil(ms / 1000));
 export class AuthService {
   /** Recent code requests per client address. Per instance; enough until there are several. */
   private readonly byAddress = new Map<string, number[]>();
+  /** Recent guest accounts per client address, against mass sign-up-bonus farming. */
+  private readonly guestsByAddress = new Map<string, number[]>();
 
   constructor(
     @Inject(AUTH_STORE) private readonly store: AuthStore,
@@ -105,6 +115,7 @@ export class AuthService {
     return {
       phone: this.settings.phoneEnabled,
       google: this.google ? { webClientId: this.google.webClientId } : null,
+      guest: this.settings.guestEnabled,
     };
   }
 
@@ -267,6 +278,38 @@ export class AuthService {
       ...session,
       user: { id: identity.userId, phone: null, email, isNew: identity.userId === candidate },
     };
+  }
+
+  /**
+   * Starts a guest account: a new player with no phone or Google attached, signed in on this
+   * device only. Signing out (or losing the app's storage) loses it. ID check still guards
+   * vouchers, so guests can play and win coins but not spend winnings on rewards without it.
+   */
+  async signInAsGuest(address?: string) {
+    if (!this.settings.guestEnabled) {
+      throw new AuthError('signed_out', 'Guest play is not available. Sign in to continue.');
+    }
+    const now = this.clock();
+    if (address) {
+      const recent = (this.guestsByAddress.get(address) ?? []).filter(
+        (t) => t > now.getTime() - HOUR,
+      );
+      if (recent.length >= this.settings.guestsPerAddressPerHour) {
+        throw new AuthError(
+          'too_many_guests',
+          'Too many new guests from this network. Try later.',
+          {
+            retryAfterSeconds: seconds(recent[0]! + HOUR - now.getTime()),
+          },
+        );
+      }
+      recent.push(now.getTime());
+      this.guestsByAddress.set(address, recent);
+      if (this.guestsByAddress.size > 50_000) this.guestsByAddress.clear();
+    }
+    const userId = newUserId();
+    const session = await this.startSession(userId, now);
+    return { ...session, user: { id: userId, phone: null, email: null, isNew: true } };
   }
 
   private async startSession(userId: string, now: Date) {

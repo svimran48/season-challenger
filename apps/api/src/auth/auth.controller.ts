@@ -12,7 +12,7 @@ const verifyBody = z.object({
 
 const googleBody = z.object({ idToken: z.string().min(20).max(4096) });
 
-/** Sign-in: Google, or phone number + one-time code. */
+/** Sign-in: Google, phone number + one-time code, or a guest account. */
 @Controller('auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
@@ -28,6 +28,13 @@ export class AuthController {
   @HttpCode(200)
   google(@Body(new ZodPipe(googleBody)) body: z.infer<typeof googleBody>) {
     return this.auth.signInWithGoogle(body.idToken);
+  }
+
+  /** Starts a guest account on this device, with no phone number or Google. */
+  @Post('guest')
+  @HttpCode(200)
+  guest(@Req() req: { ip?: string }) {
+    return this.auth.signInAsGuest(req.ip);
   }
 
   /** Texts a sign-in code. Works for new and returning players alike. */

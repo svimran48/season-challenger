@@ -16,7 +16,7 @@ export default function ProfileScreen() {
   const leave = useMutation({ mutationFn: signOut });
   const tier = mastery.data?.tier ?? 'Scout';
   const account = me.data
-    ? (me.data.email ?? me.data.phone ?? 'Your account')
+    ? (me.data.email ?? me.data.phone ?? 'Guest player')
     : me.isError
       ? 'Could not load your account'
       : 'Loading…';
@@ -54,6 +54,12 @@ export default function ProfileScreen() {
           <Text style={[styles.soon, { color: t.muted }]}>
             Your favourite club, badges and season history are coming soon.
           </Text>
+          {me.data && !me.data.email && !me.data.phone ? (
+            <Text style={[styles.soon, { color: t.live }]}>
+              You are playing as a guest. Signing out deletes access to this account and its coins
+              for good.
+            </Text>
+          ) : null}
           <Button
             kind="secondary"
             label="Sign out"

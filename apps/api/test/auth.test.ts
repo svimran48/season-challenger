@@ -46,6 +46,20 @@ async function signIn(number = phone) {
   return res.body as { token: string; user: { id: string; phone: string; isNew: boolean } };
 }
 
+describe('guest sign-in', () => {
+  it('starts a new player with no phone, who can use the wallet', async () => {
+    const methods = await http().get('/v1/auth/methods').expect(200);
+    expect(methods.body.guest).toBe(true);
+    const res = await http().post('/v1/auth/guest').expect(200);
+    expect(res.body.user).toMatchObject({ phone: null, email: null, isNew: true });
+    const me = await http().get('/v1/me').set(bearer(res.body.token)).expect(200);
+    expect(me.body).toEqual({ id: res.body.user.id, phone: null, email: null });
+    await http().get('/v1/me/wallet').set(bearer(res.body.token)).expect(200);
+    const again = await http().post('/v1/auth/guest').expect(200);
+    expect(again.body.user.id).not.toBe(res.body.user.id);
+  });
+});
+
 describe('phone sign-in', () => {
   it('texts a code to a Bangladesh number typed the local way', async () => {
     const local = `0${phone.slice(4)}`;

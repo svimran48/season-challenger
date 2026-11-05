@@ -47,6 +47,7 @@ describe('Google sign-in', () => {
     expect((await http().get('/v1/auth/methods').expect(200)).body).toEqual({
       phone: true,
       google: { webClientId: 'test-web.apps.googleusercontent.com' },
+      guest: true,
     });
     expect((await http(phoneOff).get('/v1/auth/methods').expect(200)).body.phone).toBe(false);
     expect((await http(noGoogle).get('/v1/auth/methods').expect(200)).body.google).toBeNull();

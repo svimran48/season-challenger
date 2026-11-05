@@ -22,6 +22,8 @@ const schema = z.object({
    * appear in the host's log instead of a text. For a hosted test build before a real SMS
    * provider or Google sign-in exists. Anyone who can read the log can sign in as anyone.
    */
+  /** Guest accounts (no phone or Google). On unless set to false. */
+  GUEST_SIGN_IN: z.preprocess(blankToUndefined, z.enum(['true', 'false']).optional()),
   PHONE_CODES_IN_LOG: z.preprocess(blankToUndefined, z.enum(['true', 'false']).optional()),
   /** OAuth web client id from Google Cloud; turns on Google sign-in. Not a secret. */
   GOOGLE_WEB_CLIENT_ID: z.preprocess(
@@ -63,6 +65,7 @@ export interface Config {
   googleWebClientId: string | undefined;
   /** Phone codes are offered only when they can reach a phone (not console in production). */
   phoneSignIn: boolean;
+  guestSignIn: boolean;
   kyc: {
     /** Decoded KYC_ENCRYPTION_KEY; undefined in development (a fixed dev key is used). */
     encryptionKey: Buffer | undefined;
@@ -148,6 +151,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     trustProxy: parsed.TRUST_PROXY === 'true',
     googleWebClientId: parsed.GOOGLE_WEB_CLIENT_ID,
     phoneSignIn,
+    guestSignIn: parsed.GUEST_SIGN_IN !== 'false',
     kyc: {
       encryptionKey,
       storageDir: parsed.KYC_STORAGE_DIR,

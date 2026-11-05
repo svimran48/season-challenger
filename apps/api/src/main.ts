@@ -32,7 +32,11 @@ async function main() {
     corsOrigins: config.portalOrigins,
     auth: {
       sms,
-      settings: { secret: config.authSecret, phoneEnabled: config.phoneSignIn },
+      settings: {
+        secret: config.authSecret,
+        phoneEnabled: config.phoneSignIn,
+        guestEnabled: config.guestSignIn,
+      },
       google: config.googleWebClientId
         ? new GoogleIdTokenVerifier(config.googleWebClientId)
         : undefined,
@@ -54,6 +58,7 @@ async function main() {
     }; sign-in: ${[
       config.googleWebClientId ? 'Google' : '',
       config.phoneSignIn ? `phone codes via ${sms.name}` : '',
+      config.guestSignIn ? 'guest' : '',
     ]
       .filter(Boolean)
       .join(', ')}; ID photos in ${vault.name}${

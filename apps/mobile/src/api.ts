@@ -213,6 +213,8 @@ export interface AuthMethods {
   phone: boolean;
   /** Null when Google sign-in is not configured on the server. */
   google: { webClientId: string } | null;
+  /** True when the server lets people play as a guest, with no phone or Google. */
+  guest?: boolean;
 }
 
 export interface Me {
@@ -354,10 +356,11 @@ export const api = {
     request<AuthMethods>('/v1/auth/methods').catch((error: unknown) => {
       // A server from before Google sign-in has no such route; it only offers phone sign-in.
       if (error instanceof ApiError && error.status === 404) {
-        return { phone: true, google: null } satisfies AuthMethods;
+        return { phone: true, google: null, guest: false } satisfies AuthMethods;
       }
       throw error;
     }),
+  signInAsGuest: () => request<SignedIn>('/v1/auth/guest', post()),
   signInWithGoogle: (idToken: string) => request<SignedIn>('/v1/auth/google', post({ idToken })),
   requestCode: (phone: string) => request<CodeSent>('/v1/auth/code', post({ phone })),
   verifyCode: (phone: string, code: string) =>

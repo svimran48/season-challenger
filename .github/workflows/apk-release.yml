@@ -1,0 +1,41 @@
+name: Publish APK
+
+# Puts a built APK on one fixed link that opens on a phone:
+# https://github.com/svimran48/season-challenger/releases/download/test-apk/season-challenger.apk
+# Runs after each Android APK build, or by hand with the number of an earlier build.
+on:
+  workflow_run:
+    workflows: [Android APK]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: The Android APK run to publish (the number in its address)
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    name: Publish the APK
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: season-challenger-apk
+          run-id: ${{ env.RUN_ID }}
+          github-token: ${{ github.token }}
+          path: apk
+      - name: Replace the test-apk release
+        run: |
+          mv apk/app-release.apk season-challenger.apk
+          gh release delete test-apk --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create test-apk season-challenger.apk --repo "$GITHUB_REPOSITORY" \
+            --target main --prerelease --title "Test APK" \
+            --notes "Test build from Android APK run $RUN_ID. Download season-challenger.apk on your phone and install it. Signed with a shared test key: for testing only."

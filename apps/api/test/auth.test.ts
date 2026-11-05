@@ -199,6 +199,11 @@ describe('sign-in configuration', () => {
       googleWebClientId: 'abc.apps.googleusercontent.com',
     });
     expect(loadConfig({}).phoneSignIn).toBe(true);
+    const testServer = { ...prod, PHONE_CODES_IN_LOG: 'true' };
+    expect(loadConfig(testServer)).toMatchObject({
+      phoneSignIn: true,
+      sms: { provider: 'console' },
+    });
     expect(() => loadConfig({ GOOGLE_WEB_CLIENT_ID: 'not-a-client-id' })).toThrow();
     expect(loadConfig({}).sms).toEqual({ provider: 'console' });
     expect(() => loadConfig({ SMS_PROVIDER: 'sslwireless' })).toThrow(/SSLWIRELESS_API_TOKEN/);

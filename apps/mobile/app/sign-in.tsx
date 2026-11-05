@@ -2,7 +2,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { api, ApiError } from '../src/api';
+import { api, ApiError, unreachableHint } from '../src/api';
 import { useAuth } from '../src/auth';
 import { googleSignInSupported, useGoogleSignIn } from '../src/google';
 import { GoogleSignInError } from '../src/google.types';
@@ -45,7 +45,7 @@ export default function SignInScreen() {
         <View style={{ paddingTop: 16 }}>
           <Card>
             <Text style={{ color: t.text, marginBottom: 12, lineHeight: 20 }}>
-              We could not reach the server. Check your connection and try again.
+              {unreachableHint}
             </Text>
             <Button
               label="Try again"

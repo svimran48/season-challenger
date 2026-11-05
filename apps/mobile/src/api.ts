@@ -12,6 +12,15 @@ import { clearToken, currentToken } from './session';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
 
+/** The server this build talks to (baked in at build time), for "can't reach" messages. */
+export const apiAddress = BASE_URL.replace(/^https?:\/\//, '');
+
+/** Shown when the server does not answer at all. */
+export const unreachableHint =
+  `We could not reach the server (${apiAddress}). The free test server sleeps when nobody uses ` +
+  'it and can take up to a minute to wake up, so wait a moment and try again. If it still fails, ' +
+  'check your internet connection.';
+
 /** A failed request, with the API's error code (e.g. insufficient_funds) when it sent one. */
 export class ApiError extends Error {
   constructor(

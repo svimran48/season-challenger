@@ -1,0 +1,49 @@
+# Render Blueprint: a free test server for the API, with its own Postgres.
+# Deploy it from https://render.com/deploy?repo=https://github.com/svimran48/season-challenger
+# docs/RELEASE.md ("Free test server on Render") says what it does and what it does not do.
+services:
+  - type: web
+    name: season-challenger-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: season-challenger-db
+          property: connectionString
+      # The free plan has no release step, so the API migrates as it starts.
+      - key: MIGRATE_ON_START
+        value: 'true'
+      - key: TRUST_PROXY
+        value: 'true'
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: ID_HASH_SECRET
+        generateValue: true
+      - key: VOUCHER_PRESENT_SECRET
+        generateValue: true
+      # Render generates a base64 256-bit value: exactly the 32-byte key the vault wants.
+      - key: KYC_ENCRYPTION_KEY
+        generateValue: true
+      # The free plan has no disk: ID photos last until the server restarts. Test use only.
+      - key: KYC_STORAGE_DIR
+        value: /tmp/kyc
+      # Until Google sign-in or a real SMS provider is set up, sign-in codes appear in the
+      # service's Logs tab instead of a text. Turn this off before real players join.
+      - key: PHONE_CODES_IN_LOG
+        value: 'true'
+
+databases:
+  - name: season-challenger-db
+    plan: free
+    region: singapore
+    databaseName: season_challenger
+    user: season
+    postgresMajorVersion: '16'

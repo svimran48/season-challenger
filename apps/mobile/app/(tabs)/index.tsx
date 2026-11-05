@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { api, type FixtureSummary } from '../../src/api';
+import { api, unreachableHint, type FixtureSummary } from '../../src/api';
 import { countdown, formatKickoff } from '../../src/format';
 import { font, useTheme } from '../../src/theme';
 import { kitLight } from '../../src/shaders/looks';
@@ -29,12 +29,7 @@ export default function MatchesScreen() {
   const entered = new Set(entries.data?.map((e) => e.fixture?.id));
 
   if (season.isError) {
-    return (
-      <Message
-        title="Can't reach the Season Challenger API"
-        body="Start it with `pnpm dev:api` and set EXPO_PUBLIC_API_URL if it isn't on localhost:3000."
-      />
-    );
+    return <Message title="Can't reach the Season Challenger server" body={unreachableHint} />;
   }
   if (!season.data || gameweek === undefined) return <Loading />;
 

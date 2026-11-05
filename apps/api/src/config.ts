@@ -17,6 +17,12 @@ const schema = z.object({
   /** Sender id SSL Wireless assigned to the account. */
   SSLWIRELESS_SID: z.preprocess(blankToUndefined, z.string().optional()),
   SSLWIRELESS_URL: z.preprocess(blankToUndefined, z.string().url().optional()),
+  /**
+   * Test servers only: keeps phone sign-in on in production with SMS_PROVIDER=console, so codes
+   * appear in the host's log instead of a text. For a hosted test build before a real SMS
+   * provider or Google sign-in exists. Anyone who can read the log can sign in as anyone.
+   */
+  PHONE_CODES_IN_LOG: z.preprocess(blankToUndefined, z.enum(['true', 'false']).optional()),
   /** OAuth web client id from Google Cloud; turns on Google sign-in. Not a secret. */
   GOOGLE_WEB_CLIENT_ID: z.preprocess(
     blankToUndefined,
@@ -85,11 +91,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     problems.push('SMS_PROVIDER=sslwireless needs SSLWIRELESS_API_TOKEN and SSLWIRELESS_SID.');
   }
   const production = parsed.NODE_ENV === 'production';
-  // In production the console sender would only log codes, so phone sign-in is switched off.
-  const phoneSignIn = !(production && parsed.SMS_PROVIDER === 'console');
+  // In production the console sender would only log codes, so phone sign-in is switched off,
+  // unless a test server asks for codes in its log on purpose.
+  const codesInLog = parsed.PHONE_CODES_IN_LOG === 'true';
+  const phoneSignIn = !(production && parsed.SMS_PROVIDER === 'console') || codesInLog;
   if (production && !phoneSignIn && !parsed.GOOGLE_WEB_CLIENT_ID) {
     problems.push(
-      'No way to sign in: set GOOGLE_WEB_CLIENT_ID, or a real SMS_PROVIDER for phone codes.',
+      'No way to sign in: set GOOGLE_WEB_CLIENT_ID, or a real SMS_PROVIDER for phone codes ' +
+        '(or PHONE_CODES_IN_LOG=true on a test server).',
     );
   }
   let encryptionKey: Buffer | undefined;

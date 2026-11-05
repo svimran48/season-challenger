@@ -7,8 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       api_url:
-        description: The API's HTTPS address
+        description: The API's HTTPS address (the Render test server by default)
         required: true
+        default: https://season-challenger-api.onrender.com
 
 jobs:
   apk:
@@ -19,6 +20,21 @@ jobs:
       EXPO_PUBLIC_API_URL: ${{ inputs.api_url }}
       NODE_ENV: production
     steps:
+      - name: Check the API address
+        env:
+          API_URL: ${{ inputs.api_url }}
+        run: |
+          case "$API_URL" in
+            https://*) ;;
+            *) echo "::error::The API address must start with https:// (Android blocks plain http)."; exit 1 ;;
+          esac
+          case "$API_URL" in
+            *trycloudflare.com*) echo "::warning::trycloudflare.com addresses stop working when the tunnel closes, and this APK stops with it. Use the Render address for an APK that keeps working." ;;
+          esac
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "$API_URL/health" || true)
+          if [ "$code" != "200" ]; then
+            echo "::warning::$API_URL/health answered '$code', not 200. The APK will build, but it cannot connect until that server is up."
+          fi
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

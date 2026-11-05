@@ -4,11 +4,18 @@ import { GoogleIdTokenVerifier } from './auth/google';
 import { ConsoleSmsSender, SslWirelessSmsSender, type SmsSender } from './auth/sms';
 import { loadConfig } from './config';
 import { createDatabase } from './db/client';
+import { runMigrations } from './db/migrate';
 import { DEV_KYC_KEY } from './kyc/kyc.module';
 import { DiskBlobBackend, EncryptedVault, MemoryBlobBackend } from './kyc/vault';
 
 async function main() {
   const config = loadConfig();
+  // Hosts without a separate release step (such as Render's free plan) migrate here, before
+  // serving. Safe to repeat, and an advisory lock makes two starting instances take turns.
+  if (process.env.MIGRATE_ON_START === 'true' && config.databaseUrl) {
+    const count = await runMigrations(config.databaseUrl);
+    console.log(`Database is up to date: ${count} migration(s) applied.`);
+  }
   const database = config.databaseUrl ? createDatabase(config.databaseUrl) : undefined;
   const sms: SmsSender =
     config.sms.provider === 'sslwireless'

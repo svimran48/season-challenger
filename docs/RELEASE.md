@@ -115,9 +115,16 @@ account.
 
 For each new release, raise `version` and `android.versionCode` in `app.json`.
 
+## Over-the-air updates (EAS Update)
+
+Screen and logic changes push straight to installed apps the next time they open:
+
+- Workflow: .github/workflows/eas-update.yml automatically publishes updates when changes in apps/mobile/** or packages/** land on main.
+- Can also be triggered manually from GitHub Actions -> EAS Update -> Run workflow.
+- Only native changes (such as new app permissions, new native libraries or icon changes) require a new APK build.
+
 ## Still missing
 
-- **Updates:** nothing tells people a new APK exists, so they stay on the old one until told.
 - **App icon:** the app uses the default Expo icon.
 - **Error monitoring:** errors only reach the server log.
 - **Backups:** set up Postgres backups and copy `KYC_STORAGE_DIR` with the host you choose.

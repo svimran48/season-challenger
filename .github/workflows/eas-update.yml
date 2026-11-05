@@ -1,0 +1,42 @@
+name: EAS Update
+
+# Pushes JavaScript and UI updates over-the-air to all installed Season Challenger apps
+# without rebuilding or reinstalling the APK.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/**'
+  workflow_dispatch:
+    inputs:
+      message:
+        description: 'Update message / changelog'
+        required: false
+        default: 'Manual update'
+
+concurrency:
+  group: eas-update-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Publish over-the-air update
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Setup Expo / EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Publish EAS Update to preview channel
+        working-directory: apps/mobile
+        run: |
+          npx eas-cli update --channel preview --message "${{ github.event.head_commit.message || inputs.message || 'Over-the-air update' }}" --non-interactive

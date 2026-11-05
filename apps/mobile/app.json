@@ -2,10 +2,20 @@
   "expo": {
     "name": "Season Challenger",
     "slug": "season-challenger",
+    "owner": "svimran",
     "scheme": "seasonchallenger",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "updates": {
+      "url": "https://u.expo.dev/7660cda2-2dd7-4681-9489-3279a6684438",
+      "requestHeaders": {
+        "expo-channel-name": "preview"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "plugins": [
       "expo-router",
       "@react-native-google-signin/google-signin",
@@ -43,6 +53,11 @@
       "output": "single",
       "favicon": "./assets/favicon.png"
     },
-    "icon": "./assets/icon.png"
+    "icon": "./assets/icon.png",
+    "extra": {
+      "eas": {
+        "projectId": "7660cda2-2dd7-4681-9489-3279a6684438"
+      }
+    }
   }
 }

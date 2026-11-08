@@ -4,6 +4,9 @@ import { and, eq, inArray, min, ne, sql } from 'drizzle-orm';
 import type { Database } from '../db/client';
 import { club, fixture, player, season, statsSnapshot } from '../db/schema';
 
+/** How many matches' stats one sync fetches at the same time. */
+const STATS_AT_ONCE = 4;
+
 /** Key for the advisory lock that lets one API instance at a time write a sync. */
 const SYNC_LOCK = 7_301_001;
 
@@ -130,10 +133,19 @@ export class FeedSync {
         ),
       );
     const done = new Set(final.map((r) => r.fixtureId));
-    const fetched = await Promise.all(
-      started.filter((f) => !done.has(f.id)).map((f) => this.upstream.getStats(f.id)),
-    );
-    return fetched.filter((s): s is StatsSnapshot => s !== undefined);
+    // A few at a time, and a match that fails is retried next tick instead of failing the sync:
+    // a real provider can hold dozens of played matches, which a small server cannot fetch at once.
+    const todo = started.filter((f) => !done.has(f.id));
+    const fetched: StatsSnapshot[] = [];
+    for (let i = 0; i < todo.length; i += STATS_AT_ONCE) {
+      const batch = await Promise.allSettled(
+        todo.slice(i, i + STATS_AT_ONCE).map((f) => this.upstream.getStats(f.id)),
+      );
+      for (const result of batch) {
+        if (result.status === 'fulfilled' && result.value) fetched.push(result.value);
+      }
+    }
+    return fetched;
   }
 }
 

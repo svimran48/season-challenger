@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(7, 8, 11, 0.6)',
+    backgroundColor: 'rgba(18, 19, 21, 0.6)',
   },
   tier: { fontSize: 12, fontFamily: font.title, letterSpacing: 2 },
   account: { fontSize: 18, fontFamily: font.display, marginTop: 2 },

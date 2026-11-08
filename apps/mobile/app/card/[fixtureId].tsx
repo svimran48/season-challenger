@@ -11,7 +11,7 @@ import { ShaderSurface } from '../../src/shaders/ShaderSurface';
 import { font, useTheme } from '../../src/theme';
 import { Button, Card, Chip, Gauge, Loading, Message, Rise, Screen } from '../../src/ui';
 
-const SELECTED_TINT = 'rgba(220, 183, 108, 0.12)';
+const SELECTED_TINT = 'rgba(242, 242, 240, 0.08)';
 
 const CONFIDENCE = [
   { label: 'Unsure', value: 0.4 },
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#0c0d12',
+    backgroundColor: '#1a1b1e',
   },
   heroVeil: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(5, 5, 8, 0.42)' },
   heroBody: { padding: 18 },

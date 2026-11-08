@@ -18,12 +18,12 @@ const metal = (shadow: Colour, colour: Colour, flash: Colour): Look => ({
 export const LOOKS = {
   silk: {
     source: SILK,
-    uniforms: { deep: [0.022, 0.024, 0.032], sheen: [0.62, 0.47, 0.22], glint: [1, 0.86, 0.55] },
+    uniforms: { deep: [0.07, 0.072, 0.082], sheen: [0.3, 0.31, 0.34], glint: [0.82, 0.83, 0.86] },
     renderScale: 0.5,
   },
   floodlight: {
     source: FLOODLIGHT,
-    uniforms: { lamp: [1, 0.93, 0.78], grass: [0.05, 0.27, 0.13] },
+    uniforms: { lamp: [0.9, 0.9, 0.92], grass: [0.09, 0.12, 0.11] },
     renderScale: 0.75,
   },
   clash: {
@@ -33,15 +33,15 @@ export const LOOKS = {
   },
   pitch: {
     source: PITCH,
-    uniforms: { turf: [0.07, 0.42, 0.22], paint: [1, 0.96, 0.84] },
+    uniforms: { turf: [0.1, 0.3, 0.19], paint: [0.95, 0.95, 0.94] },
     renderScale: 1,
   },
   burst: {
     source: BURST,
-    uniforms: { deep: [0.02, 0.018, 0.016], ember: [0.72, 0.48, 0.16], flare: [1, 0.86, 0.56] },
+    uniforms: { deep: [0.06, 0.062, 0.07], ember: [0.42, 0.43, 0.46], flare: [0.95, 0.95, 0.96] },
     renderScale: 0.5,
   },
-  gold: metal([0.11, 0.06, 0.015], [0.86, 0.62, 0.24], [1, 0.93, 0.72]),
+  gold: metal([0.06, 0.062, 0.07], [0.56, 0.57, 0.6], [0.96, 0.96, 0.97]),
   Scout: metal([0.07, 0.04, 0.03], [0.55, 0.33, 0.2], [1, 0.8, 0.62]),
   Analyst: metal([0.04, 0.05, 0.07], [0.58, 0.64, 0.72], [0.9, 0.96, 1]),
   Tactician: metal([0.01, 0.06, 0.05], [0.1, 0.58, 0.42], [0.72, 1, 0.88]),

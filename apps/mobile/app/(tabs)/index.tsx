@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: '#0c0d12',
+    backgroundColor: '#1a1b1e',
   },
   veil: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(5, 5, 8, 0.34)' },
   matchBody: { padding: 16 },

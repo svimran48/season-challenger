@@ -90,5 +90,5 @@ const navigationTheme = {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  waiting: { flex: 1, backgroundColor: '#07080b' },
+  waiting: { flex: 1, backgroundColor: '#121315' },
 });

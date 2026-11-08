@@ -33,7 +33,7 @@
         {
           "image": "./assets/splash-icon.png",
           "imageWidth": 180,
-          "backgroundColor": "#07080b"
+          "backgroundColor": "#121315"
         }
       ]
     ],
@@ -45,7 +45,7 @@
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#07080b"
+        "backgroundColor": "#121315"
       }
     },
     "web": {

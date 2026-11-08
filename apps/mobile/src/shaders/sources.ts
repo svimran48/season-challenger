@@ -213,20 +213,23 @@ half4 main(float2 xy) {
 
   float leftPool = smoothstep(0.52, -0.5, seam) * (0.32 + 1.0 * smokeA * smokeA);
   float rightPool = smoothstep(-0.52, 0.5, seam) * (0.32 + 1.0 * smokeB * smokeB);
-  float3 c = float3(0.012, 0.013, 0.018);
-  c += home * leftPool * 0.62;
-  c += away * rightPool * 0.62;
+  // Kit colours are muted most of the way to grey, so a match reads as a quiet hint of each club.
+  float3 homeTint = mix(float3(dot(home, float3(0.3, 0.59, 0.11))), home, 0.38);
+  float3 awayTint = mix(float3(dot(away, float3(0.3, 0.59, 0.11))), away, 0.38);
+  float3 c = float3(0.07, 0.072, 0.082);
+  c += homeTint * leftPool * 0.34;
+  c += awayTint * rightPool * 0.34;
 
   float edge = abs(seam);
   float burn = exp(-edge * 42.0) * (0.45 + 0.9 * smokeA);
   float halo = exp(-edge * 7.0) * 0.16;
-  c += float3(1.0, 0.86, 0.6) * (burn * 0.75 + halo);
+  c += float3(0.95, 0.95, 0.96) * (burn * 0.45 + halo * 0.6);
 
   float2 g = float2(uv.x * aspect * 34.0 - t * 2.0, uv.y * 34.0 + t * 5.0);
   float2 cell = floor(g);
   float2 at = fract(g) - 0.5 + (float2(hash(cell), hash(cell + 2.3)) - 0.5) * 0.7;
   float spark = step(0.86, hash(cell + 5.5)) * smoothstep(0.09, 0.0, length(at));
-  c += float3(1.0, 0.8, 0.5) * spark * exp(-edge * 6.0) * 0.9;
+  c += float3(0.95, 0.95, 0.96) * spark * exp(-edge * 6.0) * 0.35;
 
   c *= 0.62 + 0.38 * smoothstep(0.95, 0.15, abs(uv.y - 0.42) * 1.6);
   return finish(c, xy);

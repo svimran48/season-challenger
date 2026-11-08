@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     overflow: 'hidden',
-    backgroundColor: '#14100a',
+    backgroundColor: '#1a1b1e',
   },
   content: { paddingTop: 16 },
   spread: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

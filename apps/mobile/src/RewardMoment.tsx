@@ -57,10 +57,10 @@ export function RewardMoment({
   );
 }
 
-const shade = { textShadowColor: 'rgba(30, 16, 0, 0.75)', textShadowRadius: 12 };
+const shade = { textShadowColor: 'rgba(0, 0, 0, 0.6)', textShadowRadius: 12 };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#07080b' },
+  root: { flex: 1, backgroundColor: '#121315' },
   body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   amount: { flexDirection: 'row', alignItems: 'baseline' },
   plus: { fontSize: 44, fontFamily: font.display },

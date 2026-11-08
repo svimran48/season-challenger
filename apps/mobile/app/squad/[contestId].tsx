@@ -148,7 +148,7 @@ export default function SquadScreen() {
                 styles.player,
                 {
                   borderColor: on ? t.accent : t.border,
-                  backgroundColor: on ? 'rgba(220, 183, 108, 0.12)' : t.surface,
+                  backgroundColor: on ? 'rgba(242, 242, 240, 0.08)' : t.surface,
                 },
               ]}
             >

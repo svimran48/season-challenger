@@ -160,6 +160,7 @@ const styles = StyleSheet.create({
   inviteRow: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
   input: {
     flex: 1,
+    minWidth: 0,
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,

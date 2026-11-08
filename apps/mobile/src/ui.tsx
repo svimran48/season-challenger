@@ -31,7 +31,8 @@ import { ShaderSurface } from './shaders/ShaderSurface';
 import type { LookName } from './shaders/looks';
 import { font, useTheme } from './theme';
 
-export const GOLD = ['#f4dc9f', '#dcb76c', '#b98f45'] as const;
+/** The primary button's face: off-white with a soft fall-off, Graphite's only bright surface. */
+export const GOLD = ['#ffffff', '#f2f2f0', '#d9d9d6'] as const;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const PRESS_SPRING = { damping: 18, stiffness: 340 };
@@ -162,7 +163,7 @@ function Shimmer({ height, width = '100%' }: { height: number; width?: `${number
     <View style={[styles.shimmer, { height, width }]}>
       <Animated.View style={[styles.shimmerLight, pass]}>
         <LinearGradient
-          colors={['transparent', 'rgba(220, 183, 108, 0.2)', 'transparent']}
+          colors={['transparent', 'rgba(242, 242, 240, 0.12)', 'transparent']}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
@@ -243,7 +244,7 @@ export function Message({ title, body }: { title: string; body?: string }) {
   );
 }
 
-const GOLD_EDGE = 'rgba(255, 240, 200, 0.55)';
+const GOLD_EDGE = 'rgba(255, 255, 255, 0.6)';
 
 export function Button({
   label,
@@ -357,7 +358,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 1,
-    backgroundColor: '#07080b',
+    backgroundColor: '#121315',
   },
   notchLeft: { left: -9 },
   notchRight: { right: -9 },
@@ -376,7 +377,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 16,
     marginBottom: 12,
-    backgroundColor: '#14100a',
+    backgroundColor: '#1a1b1e',
   },
   veil: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(5, 5, 7, 0.58)' },
   metalBody: { padding: 18 },

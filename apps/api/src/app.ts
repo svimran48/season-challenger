@@ -167,8 +167,13 @@ export interface CreateAppOptions {
 
 /** Builds the Nest app. Shared by main.ts and the HTTP tests. */
 export async function createApp(options: CreateAppOptions = {}): Promise<INestApplication> {
+  // Only the fake league needs pinning to its stored season; a real provider has fixed dates.
+  const kind = process.env.FOOTBALL_FEED ?? 'fake';
   const feed =
-    options.feed ?? (options.database ? await pinnedFakeFeed(options.database.db) : createFeed());
+    options.feed ??
+    (options.database && kind === 'fake'
+      ? await pinnedFakeFeed(options.database.db)
+      : createFeed(kind));
   const app = await NestFactory.create(
     AppModule.register({
       feed,

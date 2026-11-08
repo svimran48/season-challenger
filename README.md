@@ -18,11 +18,11 @@ tournaments (head-to-head, small league, mega, private), and redeem coins they _
 travel discount vouchers. Vouchers are discounts only, tied to an ID-verified 18+ account, and
 never convert back to taka.
 
-| Layer         | Choice                                                                        |
-| ------------- | ----------------------------------------------------------------------------- |
-| Mobile        | Expo (React Native) with Expo Router                                          |
-| API           | NestJS, Zod validation                                                        |
-| Database      | PostgreSQL 16 with Drizzle migrations; Redis for leaderboards and queues      |
-| Football data | Licensed provider behind a `FootballFeed` adapter; `FakeFeed` for development |
+| Layer         | Choice                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| Mobile        | Expo (React Native) with Expo Router                                                       |
+| API           | NestJS, Zod validation                                                                     |
+| Database      | PostgreSQL 16 with Drizzle migrations; Redis for leaderboards and queues                   |
+| Football data | `FootballFeed` adapter: `FakeFeed` for development, `FotMobFeed` for live scores and stats |
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) to run it locally.

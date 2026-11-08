@@ -5,7 +5,7 @@ Season Challenger is a pnpm monorepo in TypeScript.
 | Path              | What it is                                                                                                                     |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `packages/shared` | Domain types and pure game rules: squad validation, fantasy points, contest ranking, Season Mastery grading, ratings and tiers |
-| `packages/feed`   | `FootballFeed` interface plus `FakeFeed`, an offline league of eight fictional clubs                                           |
+| `packages/feed`   | `FootballFeed` interface with two adapters: `FakeFeed` (offline) and `FotMobFeed` (live data)                                  |
 | `packages/wallet` | Coin ledger, rewards, tournament categories, prize tables and settlement, voucher redemption rules                             |
 | `apps/api`        | NestJS REST API and the Drizzle database schema                                                                                |
 | `apps/mobile`     | Expo (React Native) app with Expo Router                                                                                       |
@@ -33,11 +33,39 @@ number per test phone to play against each other.
 On a physical phone, set `EXPO_PUBLIC_API_URL` to your computer's LAN address, for example
 `http://192.168.1.20:3000`, because `localhost` on the phone is the phone itself.
 
-## The fake feed
+## The football feed
 
-`FOOTBALL_FEED=fake` (the default) serves a deterministic league: same seed, same clubs, players,
-fixtures and match stats on every machine. Its season starts five weeks before today, so there are
-always finished fixtures with points and upcoming fixtures with open deadlines.
+Two adapters sit behind the `FootballFeed` interface, chosen with `FOOTBALL_FEED`.
+
+`fake` (the default) serves a deterministic league: same seed, same clubs, players, fixtures and
+match stats on every machine. Its season starts five weeks before today, so there are always
+finished fixtures with points and upcoming fixtures with open deadlines.
+
+`fotmob` reads live scores and stats from FotMob. Set the league with `FOTMOB_LEAGUE_ID` (47 is the
+Premier League; the number is in the FotMob URL, `fotmob.com/leagues/47/overview/premier-league`)
+and optionally pin a season with `FOTMOB_SEASON` (for example `2026/2027`). Without a season the
+adapter uses the one FotMob treats as current, falling back to the newest season that actually has
+fixtures.
+
+```bash
+FOOTBALL_FEED=fotmob pnpm dev:api
+```
+
+The adapter reads FotMob's public site API (`/api/data/leagues`, `/api/data/teams`,
+`/api/data/matchDetails`). That API is unofficial and unversioned, so:
+
+- all mapping lives in `packages/feed/src/fotmob/map.ts`, away from the network, and is tested
+  against recorded payloads;
+- responses are cached by URL (30 s for the league, 15 s for a live match, 24 h for a finished
+  match, 6 h for a club page), so a page view never turns into a burst of upstream calls;
+- our ids are prefixed (`fm-club-8650`, `fm-player-319784`, `fm-fixture-4813374`), so the
+  provider's ids stay in one place.
+
+Two things FotMob does not supply are filled in deterministically: a player's credit price comes
+from their market value on a fixed log scale inside their position's band, and outfield players'
+goals conceded are charged in proportion to the minutes they played (FotMob reports that stat for
+keepers only). A finished match is stored as stats snapshot version 1000; a live one uses the
+elapsed minute, so a later correction adds a version rather than overwriting the one grading used.
 
 With `DATABASE_URL` set, the API reads football data from Postgres and a worker inside the API
 syncs it from the provider every `WORKER_SECONDS`. Only the sync calls the provider. Stats
